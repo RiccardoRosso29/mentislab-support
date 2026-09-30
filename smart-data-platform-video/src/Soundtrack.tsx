@@ -24,7 +24,7 @@ export const Soundtrack: React.FC = () => {
       <Sfx src="riser.wav" at={0} volume={0.45} />
       <Sfx src="impact.wav" at={38} volume={0.6} />
       {scenes.slice(1).map((s) => (
-        <Sfx key={s} src="whoosh.wav" at={SCENE_START[s] - 4} volume={0.35} />
+        <Sfx key={s} src="whoosh.wav" at={SCENE_START[s]} volume={0.35} />
       ))}
       {scenes.flatMap((s) =>
         (SCENE_CLICKS[s] ?? []).map((c) => <Sfx key={`${s}-${c}`} src="click.wav" at={SCENE_START[s] + c} volume={0.7} />),

@@ -7,9 +7,9 @@ import {colors, fonts} from '../theme';
 
 // Cursor click frames (relative to each scene), shared with the sound design.
 export const SCENE_CLICKS: Partial<Record<SceneName, number[]>> = {
-  statistiche: [56, 95, 133],
-  sociodemografico: [57, 95],
-  esportazioni: [76],
+  statistiche: [80, 160, 240],
+  sociodemografico: [80, 160],
+  esportazioni: [115],
 };
 
 export const Panoramica: React.FC = () => (
@@ -20,13 +20,13 @@ export const Panoramica: React.FC = () => (
       shots={[{src: 'screens/panoramica.png', from: 0}]}
       cams={[
         {f: 0, s: 1, x: 0.5, y: 0.5},
-        {f: 48, s: 1, x: 0.5, y: 0.5},
-        {f: 100, s: 1.75, x: 0.79, y: 0.38},
+        {f: 75, s: 1, x: 0.5, y: 0.5},
+        {f: 145, s: 1.75, x: 0.79, y: 0.38},
       ]}
       overlays={(ctx) => (
         <>
-          <Highlight ctx={ctx} x={0.181} y={0.16} w={0.393} h={0.388} from={16} to={46} label="Area di interesse" />
-          <Highlight ctx={ctx} x={0.592} y={0.207} w={0.396} h={0.345} from={102} label="Presenze · Arrivi · Pernottamenti · Visitatori" />
+          <Highlight ctx={ctx} x={0.181} y={0.16} w={0.393} h={0.388} from={20} to={72} label="Area di interesse" />
+          <Highlight ctx={ctx} x={0.592} y={0.207} w={0.396} h={0.345} from={148} label="Presenze · Arrivi · Pernottamenti · Visitatori" />
         </>
       )}
     />
@@ -55,13 +55,16 @@ export const StatisticheVisite: React.FC = () => {
         overlays={(ctx) => (
           <Cursor
             ctx={ctx}
-            from={25}
+            from={30}
             path={[
-              {f: 25, x: 0.62, y: 0.55},
+              {f: 30, x: 0.62, y: 0.55},
+              {f: c1 - 28, x: 0.5, y: 0.45},
               {f: c1 - 3, x: 0.306, y: STAT_TAB_Y},
+              {f: c2 - 28, x: 0.306, y: STAT_TAB_Y},
               {f: c2 - 3, x: 0.386, y: STAT_TAB_Y},
+              {f: c3 - 28, x: 0.386, y: STAT_TAB_Y},
               {f: c3 - 3, x: 0.467, y: STAT_TAB_Y},
-              {f: SCENES.statistiche, x: 0.6, y: 0.45},
+              {f: c3 + 30, x: 0.62, y: 0.5},
             ]}
             clicks={[c1, c2, c3]}
           />
@@ -92,12 +95,14 @@ export const Sociodemografico: React.FC = () => {
         overlays={(ctx) => (
           <Cursor
             ctx={ctx}
-            from={22}
+            from={30}
             path={[
-              {f: 22, x: 0.55, y: 0.6},
+              {f: 30, x: 0.55, y: 0.6},
+              {f: c1 - 28, x: 0.45, y: 0.4},
               {f: c1 - 3, x: 0.304, y: SOCIO_TAB_Y},
+              {f: c2 - 28, x: 0.304, y: SOCIO_TAB_Y},
               {f: c2 - 3, x: 0.385, y: SOCIO_TAB_Y},
-              {f: SCENES.sociodemografico, x: 0.5, y: 0.5},
+              {f: c2 + 30, x: 0.55, y: 0.5},
             ]}
             clicks={[c1, c2]}
           />
@@ -115,13 +120,13 @@ export const Viaggi: React.FC = () => (
       shots={[{src: 'screens/viaggi.png', from: 0}]}
       cams={[
         {f: 0, s: 1, x: 0.5, y: 0.5},
-        {f: 40, s: 1, x: 0.5, y: 0.5},
-        {f: 106, s: 1.9, x: 0.56, y: 0.66},
+        {f: 70, s: 1, x: 0.5, y: 0.5},
+        {f: 165, s: 1.9, x: 0.56, y: 0.66},
       ]}
       overlays={(ctx) => (
         <>
-          <Highlight ctx={ctx} x={0.173} y={0.132} w={0.817} h={0.14} from={12} to={46} label="Flussi e tappe del viaggio" />
-          <Pulse ctx={ctx} x={0.563} y={0.729} from={46} />
+          <Highlight ctx={ctx} x={0.173} y={0.132} w={0.817} h={0.14} from={18} to={72} label="Flussi e tappe del viaggio" />
+          <Pulse ctx={ctx} x={0.563} y={0.729} from={75} />
         </>
       )}
     />
@@ -136,13 +141,13 @@ export const Previsioni: React.FC = () => (
       shots={[{src: 'screens/previsioni.png', from: 0}]}
       cams={[
         {f: 0, s: 1, x: 0.5, y: 0.5},
-        {f: 36, s: 1, x: 0.5, y: 0.5},
-        {f: 90, s: 1.45, x: 0.7, y: 0.6},
+        {f: 70, s: 1, x: 0.5, y: 0.5},
+        {f: 145, s: 1.45, x: 0.7, y: 0.6},
       ]}
       overlays={(ctx) => (
         <>
-          <Highlight ctx={ctx} x={0.245} y={0.46} w={0.705} h={0.07} from={12} to={44} label="Meteo ed eventi" />
-          <Highlight ctx={ctx} x={0.672} y={0.54} w={0.265} h={0.23} from={64} label="Previsione" />
+          <Highlight ctx={ctx} x={0.245} y={0.46} w={0.705} h={0.07} from={18} to={75} label="Meteo ed eventi" />
+          <Highlight ctx={ctx} x={0.672} y={0.54} w={0.265} h={0.23} from={125} label="Previsione" />
         </>
       )}
     />
@@ -158,14 +163,14 @@ export const Agent: React.FC = () => (
       shots={[{src: 'screens/sdp-agent.png', from: 0}]}
       cams={[
         {f: 0, s: 1, x: 0.5, y: 0.5},
-        {f: 20, s: 1, x: 0.5, y: 0.5},
-        {f: 56, s: 1.6, x: 0.74, y: 0.55},
+        {f: 45, s: 1, x: 0.5, y: 0.5},
+        {f: 100, s: 1.6, x: 0.74, y: 0.55},
       ]}
       overlays={(ctx) => (
         <>
-          <Highlight ctx={ctx} x={0.487} y={0.26} w={0.51} h={0.73} from={4} to={28} label="SDP Agent" />
-          <Highlight ctx={ctx} x={0.643} y={0.385} w={0.218} h={0.056} from={50} label="Domanda dell'utente" />
-          <Highlight ctx={ctx} x={0.5} y={0.44} w={0.29} h={0.345} from={68} label="Risposta dell'agente" />
+          <Highlight ctx={ctx} x={0.487} y={0.26} w={0.51} h={0.73} from={8} to={55} label="SDP Agent" />
+          <Highlight ctx={ctx} x={0.643} y={0.385} w={0.218} h={0.056} from={95} label="Domanda dell'utente" />
+          <Highlight ctx={ctx} x={0.5} y={0.44} w={0.29} h={0.345} from={122} label="Risposta dell'agente" />
         </>
       )}
     />
@@ -182,15 +187,16 @@ export const Esportazioni: React.FC = () => {
         shots={[{src: 'screens/esportazioni.png', from: 0}]}
         cams={[
           {f: 0, s: 1, x: 0.5, y: 0.5},
-          {f: 25, s: 1, x: 0.5, y: 0.5},
-          {f: 68, s: 1.6, x: 0.8, y: 0.42},
+          {f: 45, s: 1, x: 0.5, y: 0.5},
+          {f: 105, s: 1.6, x: 0.8, y: 0.42},
         ]}
         overlays={(ctx) => (
           <Cursor
             ctx={ctx}
-            from={22}
+            from={40}
             path={[
-              {f: 22, x: 0.6, y: 0.7},
+              {f: 40, x: 0.6, y: 0.7},
+              {f: 70, x: 0.62, y: 0.6},
               {f: click - 4, x: 0.955, y: 0.435},
             ]}
             clicks={[click]}

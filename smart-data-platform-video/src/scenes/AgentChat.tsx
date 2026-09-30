@@ -7,23 +7,20 @@ import {colors, fonts} from '../theme';
 // platform screenshots (Finale Ligure, June 2026).
 const Q1 = 'Quanti pernottamenti ci sono stati a giugno rispetto a maggio?';
 const Q2 = 'E da quali paesi arrivano i visitatori stranieri?';
-const A1_TEXT = 'Ho confrontato i pernottamenti a Finale Ligure tra giugno e maggio 2026.';
-const A2_TEXT = 'Ecco i primi 3 paesi di provenienza dei visitatori internazionali (2–29 giugno):';
 
 // Local frames of each beat, shared with the sound design.
 export const AGENT_CHAT = {
-  type1: [14, 54] as [number, number],
-  send1: 57,
-  act1: 64,
-  answer1: 102,
-  type2: [168, 200] as [number, number],
-  send2: 203,
-  act2: 210,
-  answer2: 236,
+  type1: [20, 75] as [number, number],
+  send1: 78,
+  act1: 85,
+  answer1: 133,
+  type2: [292, 325] as [number, number],
+  send2: 328,
+  act2: 334,
+  answer2: 368,
 };
 const T = AGENT_CHAT;
 
-const fmt = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 const clamp = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'} as const;
 
 const typed = (frame: number, text: string, [a, b]: [number, number]) =>
@@ -40,6 +37,13 @@ const Grow: React.FC<{from: number; height: number; children: React.ReactNode}> 
       <div style={{transform: `translateY(${(1 - p) * 24}px)`}}>{children}</div>
     </div>
   );
+};
+
+// Streamed answers have a natural height: they only fade in and grow as text arrives.
+const Appear: React.FC<{from: number; children: React.ReactNode}> = ({from, children}) => {
+  const frame = useCurrentFrame();
+  if (frame < from) return null;
+  return <div style={{flexShrink: 0, opacity: interpolate(frame, [from, from + 6], [0, 1], clamp)}}>{children}</div>;
 };
 
 const UserBubble: React.FC<{text: string}> = ({text}) => (
@@ -87,9 +91,9 @@ const Activity: React.FC<{from: number; steps: string[]; collapseAt: number}> = 
       {collapsed
         ? null
         : steps.map((s, i) => {
-            const start = from + 4 + i * 12;
+            const start = from + 4 + i * 14;
             if (frame < start) return null;
-            const done = frame >= start + 10;
+            const done = frame >= start + 12;
             return (
               <div key={s} style={{display: 'flex', alignItems: 'center', gap: 12, height: 32, paddingLeft: 22, fontSize: 16, color: '#444'}}>
                 {done ? <span style={{color: '#1EA84B', fontWeight: 800, width: 16}}>✓</span> : <Spinner frame={frame} />}
@@ -101,91 +105,115 @@ const Activity: React.FC<{from: number; steps: string[]; collapseAt: number}> = 
   );
 };
 
-const Bar: React.FC<{label: string; value: number; max: number; from: number; suffix?: string; color?: string}> = ({
-  label,
-  value,
-  max,
-  from,
-  suffix,
-  color = colors.orange,
-}) => {
-  const frame = useCurrentFrame();
-  const p = interpolate(frame, [from, from + 26], [0, 1], {...clamp, easing: (t) => 1 - Math.pow(1 - t, 3)});
-  return (
-    <div style={{display: 'flex', alignItems: 'center', gap: 16, height: 40}}>
-      <div style={{width: 150, fontSize: 17, fontWeight: 600, color: '#333'}}>{label}</div>
-      <div style={{flex: 1, height: 26, background: '#e6e6e6', borderRadius: 6, overflow: 'hidden'}}>
-        <div style={{width: `${(value / max) * 100 * p}%`, height: '100%', background: color, borderRadius: 6}} />
-      </div>
-      <div style={{width: 210, fontSize: 18, fontWeight: 700, color: '#222', textAlign: 'right'}}>
-        {fmt(value * p)}
-        {suffix ? <span style={{fontWeight: 500, color: '#777'}}> {suffix}</span> : null}
-      </div>
-    </div>
-  );
-};
-
 const AnswerBox: React.FC<{children: React.ReactNode}> = ({children}) => (
   <div
     style={{
       background: '#F3F3F4',
       borderRadius: 10,
-      borderLeft: `4px solid ${colors.orange}`,
       padding: '18px 26px',
       color: '#333',
       fontSize: 17,
-      maxWidth: 900,
+      lineHeight: 1.5,
+      maxWidth: 980,
     }}
   >
     {children}
   </div>
 );
 
-const Answer1: React.FC = () => {
+// Streams `text` between frames [a, b] like tokens arriving from the model.
+const Stream: React.FC<{text: string; at: [number, number]; style?: React.CSSProperties}> = ({text, at, style}) => {
   const frame = useCurrentFrame();
-  const {fps} = useVideoConfig();
-  const pill = spring({frame: frame - (T.answer1 + 58), fps, config: {damping: 12}});
+  if (frame < at[0]) return null;
+  return <div style={style}>{typed(frame, text, at)}</div>;
+};
+
+const Bullet: React.FC<{text: string; at: [number, number]}> = ({text, at}) => {
+  const frame = useCurrentFrame();
+  if (frame < at[0]) return null;
+  return (
+    <div style={{display: 'flex', gap: 12, paddingLeft: 6}}>
+      <span style={{color: colors.orange, fontWeight: 800}}>•</span>
+      <span>{typed(frame, text, at)}</span>
+    </div>
+  );
+};
+
+// Text report: title, bullet list, commentary and a suggested follow-up (no charts).
+const Answer1: React.FC = () => {
+  const A = T.answer1;
   return (
     <AnswerBox>
-      <div style={{fontSize: 21, fontWeight: 800, color: '#1b1b1b', marginBottom: 6}}>Pernottamenti: giugno vs maggio 2026</div>
-      <div style={{marginBottom: 12, minHeight: 24}}>{typed(frame, A1_TEXT, [T.answer1 + 6, T.answer1 + 30])}</div>
-      <Bar label="Giugno 2026" value={453698} max={453698} from={T.answer1 + 26} />
-      <Bar label="Maggio 2026" value={366012} max={453698} from={T.answer1 + 34} color="#F6A56B" />
-      <div
-        style={{
-          marginTop: 10,
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '8px 16px',
-          borderRadius: 999,
-          background: 'rgba(30,168,75,0.12)',
-          color: '#138a3c',
-          fontWeight: 700,
-          fontSize: 17,
-          opacity: pill,
-          transform: `scale(${0.7 + 0.3 * pill})`,
-          transformOrigin: 'left center',
-        }}
-      >
-        ▲ +87.686 pernottamenti (+24%)
-      </div>
+      <Stream text="Confronto Pernottamenti: Giugno 2026 vs Maggio 2026" at={[A, A + 10]} style={{fontSize: 21, fontWeight: 800, color: '#1b1b1b'}} />
+      <Stream text="Finale Ligure" at={[A + 10, A + 14]} style={{color: '#666', marginBottom: 6}} />
+      <Bullet text="Giugno 2026: 453.698 pernottamenti" at={[A + 16, A + 26]} />
+      <Bullet text="Maggio 2026: 366.012 pernottamenti" at={[A + 26, A + 36]} />
+      <Bullet text="Variazione: +87.686 pernottamenti (+24% rispetto a maggio)" at={[A + 36, A + 48]} />
+      <Stream
+        text="Nel mese di giugno si è registrato un aumento significativo dei pernottamenti rispetto al mese precedente, con quasi 88.000 notti aggiuntive. Questo incremento del 24% indica una crescita dell'attività turistica con soggiorno a Finale Ligure nel periodo estivo."
+        at={[A + 52, A + 102]}
+        style={{marginTop: 8}}
+      />
+      <Stream
+        text="Domanda utile: vuoi vedere come si distribuiscono questi pernottamenti per tipologia di visitatore (turisti, residenti, ecc.)?"
+        at={[A + 108, A + 134]}
+        style={{marginTop: 10, paddingTop: 10, borderTop: '1px solid #d9d9d9', color: '#555', fontStyle: 'italic'}}
+      />
     </AnswerBox>
   );
 };
 
+const COUNTRIES: [string, string, string][] = [
+  ['Germania', '3.174', '23,5%'],
+  ['Svizzera', '2.565', '19,0%'],
+  ['Francia', '2.004', '14,9%'],
+  ['Stati Uniti', '929', '6,9%'],
+  ['Paesi Bassi', '810', '6,0%'],
+];
+
+// Tabular report: rows arrive one by one, followed by a short text summary.
 const Answer2: React.FC = () => {
   const frame = useCurrentFrame();
+  const B = T.answer2;
+  const cell: React.CSSProperties = {padding: '7px 16px', borderBottom: '1px solid #e0e0e0'};
+  const rowIn = (i: number) => interpolate(frame, [B + 30 + i * 6, B + 36 + i * 6], [0, 1], clamp);
   return (
     <AnswerBox>
-      <div style={{fontSize: 21, fontWeight: 800, color: '#1b1b1b', marginBottom: 6}}>Top paesi di provenienza</div>
-      <div style={{marginBottom: 12, minHeight: 24}}>{typed(frame, A2_TEXT, [T.answer2 + 6, T.answer2 + 28])}</div>
-      <Bar label="Germania" value={3174} max={3174} from={T.answer2 + 24} suffix="· 23,5%" />
-      <Bar label="Svizzera" value={2565} max={3174} from={T.answer2 + 30} suffix="· 19,0%" color="#F6A56B" />
-      <Bar label="Francia" value={2004} max={3174} from={T.answer2 + 36} suffix="· 14,9%" color="#F9C49B" />
+      <Stream text="Top 5 paesi di provenienza" at={[B, B + 8]} style={{fontSize: 21, fontWeight: 800, color: '#1b1b1b'}} />
+      <Stream text="Visitatori internazionali a Finale Ligure, 2–29 giugno 2026:" at={[B + 8, B + 24]} style={{marginBottom: 10}} />
+      {frame >= B + 26 ? (
+        <table style={{borderCollapse: 'collapse', width: 620, fontSize: 17, background: 'white', borderRadius: 8, overflow: 'hidden'}}>
+          <thead>
+            <tr style={{background: '#5f5f63', color: 'white', textAlign: 'left'}}>
+              <th style={{...cell, width: 40}}>#</th>
+              <th style={cell}>Paese</th>
+              <th style={{...cell, textAlign: 'right'}}>Visitatori</th>
+              <th style={{...cell, textAlign: 'right'}}>%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {COUNTRIES.map(([name, visitors, pct], i) =>
+              frame >= B + 30 + i * 6 ? (
+                <tr key={name} style={{opacity: rowIn(i), background: i === 0 ? 'rgba(255,106,0,0.12)' : 'transparent'}}>
+                  <td style={{...cell, fontWeight: 700}}>{i + 1}</td>
+                  <td style={cell}>{name}</td>
+                  <td style={{...cell, textAlign: 'right', fontWeight: 600}}>{visitors}</td>
+                  <td style={{...cell, textAlign: 'right'}}>{pct}</td>
+                </tr>
+              ) : null,
+            )}
+          </tbody>
+        </table>
+      ) : null}
+      <Stream
+        text="Germania, Svizzera e Francia insieme rappresentano il 57,4% dei visitatori internazionali."
+        at={[B + 62, B + 84]}
+        style={{marginTop: 12}}
+      />
     </AnswerBox>
   );
 };
+
 
 const Feedback: React.FC = () => (
   <div style={{display: 'flex', gap: 18, fontSize: 15, color: '#888', paddingLeft: 4}}>
@@ -323,20 +351,20 @@ export const AgentChat: React.FC = () => {
                   collapseAt={T.answer1}
                   steps={['Interpreto la richiesta', 'Interrogo i dati di Finale Ligure', 'Confronto giugno e maggio 2026']}
                 />
-                <Grow from={T.answer1} height={248}>
+                <Appear from={T.answer1}>
                   <Answer1 />
-                </Grow>
-                <Grow from={T.answer1 + 66} height={22}>
+                </Appear>
+                <Grow from={T.answer1 + 140} height={22}>
                   <Feedback />
                 </Grow>
                 <Grow from={T.send2 + 2} height={62}>
                   <UserBubble text={Q2} />
                 </Grow>
-                <Activity from={T.act2} collapseAt={T.answer2} steps={['Analizzo le origini internazionali']} />
+                <Activity from={T.act2} collapseAt={T.answer2} steps={['Analizzo le origini internazionali', 'Ordino i paesi per numero di visitatori']} />
                 <Typing from={T.act2 + 14} to={T.answer2} />
-                <Grow from={T.answer2} height={240}>
+                <Appear from={T.answer2}>
                   <Answer2 />
-                </Grow>
+                </Appear>
               </div>
               {/* Input */}
               <div

@@ -14,7 +14,7 @@ SR = 44100
 BPM = 120
 BEAT = 60 / BPM  # 0.5 s = 15 video frames at 30 fps
 BAR = BEAT * 4
-DURATION = 45.0
+DURATION = 75.0
 OUT = Path(__file__).resolve().parent.parent / "public" / "audio"
 rng = np.random.default_rng(7)
 
@@ -111,6 +111,13 @@ CHORDS = [
     (48, [55, 60, 64]),  # C
     (43, [55, 59, 62]),  # G
 ]
+# Second section for variety over the longer cut: Dm - Am - F - G
+CHORDS_B = [
+    (38, [50, 53, 57]),  # Dm
+    (45, [57, 60, 64]),  # Am
+    (41, [53, 57, 60]),  # F
+    (43, [55, 59, 62]),  # G
+]
 ARP_PATTERN = [0, 1, 2, 1, 2, 3, 2, 1]
 
 
@@ -122,12 +129,13 @@ def build_music():
     arps = np.zeros(n)
 
     k, c, h, ho = kick(), clap(), hat(), hat(True)
-    groove_start, groove_end = BAR * 1, BAR * 21  # 2 s .. 42 s
+    groove_start, groove_end = BAR * 1, DURATION - 3 * BEAT * 2  # 2 s .. 72 s
     n_bars = int(np.ceil(DURATION / BAR))
 
     for bar in range(n_bars):
         t0 = bar * BAR
-        root, chord = CHORDS[bar % 4]
+        section = CHORDS_B if (bar // 8) % 2 == 1 else CHORDS
+        root, chord = section[bar % 4]
         pads_len = BAR
         if t0 < groove_end:
             add(pads, pad(chord + [chord[0] + 12], pads_len + 0.3), t0)
@@ -141,9 +149,11 @@ def build_music():
         if not in_groove:
             continue
         fill = bar % 8 == 7
+        breakdown = bar % 16 == 15  # one lighter bar every 16 to breathe
         for beat in range(4):
             tb = t0 + beat * BEAT
-            add(drums, k, tb)
+            if not breakdown:
+                add(drums, k, tb)
             if beat in (1, 3):
                 add(drums, c, tb)
             add(drums, ho if beat == 3 and bar % 2 else h, tb + BEAT / 2)
@@ -179,7 +189,7 @@ def build_music():
 
 
 # ---------------------------------------------------------------------- SFX
-def whoosh(length=0.7):
+def whoosh(length=1.0):
     t = t_axis(length)
     noise = rng.standard_normal(len(t))
     # Sweep the band upwards by filtering in short chunks

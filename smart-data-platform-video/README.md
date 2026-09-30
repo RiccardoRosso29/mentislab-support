@@ -1,6 +1,6 @@
 # Smart Data Platform — video promozionale
 
-Video animato di 45 secondi (1920×1080, 30 fps, con musica ed effetti sonori) che presenta la **Smart Data Platform**,
+Video animato di 1:15 minuti (1920×1080, 30 fps, con musica ed effetti sonori) che presenta la **Smart Data Platform**,
 la piattaforma di mobility analytics di **WindTre Business × CKDelta**. Realizzato con [Remotion](https://www.remotion.dev).
 
 Video renderizzato: [`out/smart-data-platform.mp4`](out/smart-data-platform.mp4)
@@ -16,7 +16,7 @@ Video renderizzato: [`out/smart-data-platform.mp4`](out/smart-data-platform.mp4)
 | 04 | Viaggi dei visitatori | KPI dei viaggi e zoom sulla mappa dei flussi con impulso su Genova |
 | 05 | Previsioni | Meteo/eventi e tratto previsionale evidenziati |
 | 06 | SDP Agent | Zoom sul pannello reale dell'agente (domanda e risposta evidenziate) |
-| 06 | SDP Agent · conversazione | Chat animata: l'utente digita, l'agente mostra i passaggi di "Attività", risponde con grafici e gestisce una domanda di follow-up (dati tratti dagli screenshot) |
+| 06 | SDP Agent · conversazione | Chat animata: l'utente digita, l'agente mostra i passaggi di "Attività" e risponde con report testuali (titolo, elenco puntato, commento) e tabelle, senza grafici; segue una domanda di follow-up (dati tratti dagli screenshot) |
 | 07 | Esportazioni dati | Click su "Esporta CSV" con conferma del download |
 | – | Outro | Riepilogo funzionalità, claim "Trasforma i movimenti in decisioni.", loghi |
 
