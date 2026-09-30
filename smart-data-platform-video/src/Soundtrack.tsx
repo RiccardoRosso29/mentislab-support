@@ -36,6 +36,8 @@ export const Soundtrack: React.FC = () => {
       <Sfx src="ding.wav" at={chat + A.answer1} volume={0.35} />
       <Sfx src="ding.wav" at={chat + A.answer2} volume={0.35} />
       <Sfx src="impact.wav" at={TOTAL_FRAMES - 90} volume={0.5} />
+      <Sfx src="riser.wav" at={SCENE_START.previsioni - 25} volume={0.35} />
+      <Sfx src="impact.wav" at={SCENE_START.previsioni + 12} volume={0.45} />
     </>
   );
 };

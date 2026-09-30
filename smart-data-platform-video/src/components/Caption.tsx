@@ -2,11 +2,12 @@ import {interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {colors, fonts} from '../theme';
 
 // Scene header: numbered kicker + headline with word-by-word reveal.
-export const Caption: React.FC<{index: number; kicker: string; title: string; highlight?: string}> = ({
+export const Caption: React.FC<{index: number; kicker: string; title: string; highlight?: string; badge?: string}> = ({
   index,
   kicker,
   title,
   highlight,
+  badge,
 }) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
@@ -34,6 +35,22 @@ export const Caption: React.FC<{index: number; kicker: string; title: string; hi
         <span style={{color: 'white', opacity: 0.5}}>{String(index).padStart(2, '0')}</span>
         <div style={{width: 60 * bar, height: 3, background: colors.orange, borderRadius: 2}} />
         {kicker}
+        {badge ? (
+          <span
+            style={{
+              marginLeft: 6,
+              padding: '5px 14px',
+              borderRadius: 999,
+              background: colors.orange,
+              color: 'white',
+              fontSize: 16,
+              letterSpacing: 2,
+              boxShadow: `0 0 ${14 + 8 * Math.sin(frame / 5)}px rgba(255,106,0,0.8)`,
+            }}
+          >
+            {badge}
+          </span>
+        ) : null}
       </div>
       <div
         style={{

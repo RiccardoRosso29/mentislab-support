@@ -1,4 +1,4 @@
-import {AbsoluteFill, useCurrentFrame} from 'remotion';
+import {AbsoluteFill, interpolate, Sequence, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {AppShot} from '../components/AppShot';
 import {Caption} from '../components/Caption';
 import {Chip, Cursor, Highlight, Pulse} from '../components/Overlays';
@@ -9,7 +9,7 @@ import {colors, fonts} from '../theme';
 export const SCENE_CLICKS: Partial<Record<SceneName, number[]>> = {
   statistiche: [80, 160, 240],
   sociodemografico: [80, 160],
-  esportazioni: [115],
+  esportazioni: [95],
 };
 
 export const Panoramica: React.FC = () => (
@@ -33,6 +33,11 @@ export const Panoramica: React.FC = () => (
   </AbsoluteFill>
 );
 
+// Chart regions shared by the Statistiche/Sociodemografico layouts (fractions of the image)
+const LEFT = {x: 0.188, y: 0.25, w: 0.382, h: 0.33};
+const RIGHT = {x: 0.585, y: 0.25, w: 0.39, h: 0.33};
+const BOTTOM = {x: 0.188, y: 0.615, w: 0.787, h: 0.34};
+
 // Tab positions inside the screenshots (fractions of the image)
 const STAT_TAB_Y = 0.205;
 export const StatisticheVisite: React.FC = () => {
@@ -53,7 +58,20 @@ export const StatisticheVisite: React.FC = () => {
           {f: SCENES.statistiche, s: 1.1, x: 0.5, y: 0.45},
         ]}
         overlays={(ctx) => (
-          <Cursor
+          <>
+            {/* Orario di arrivo */}
+            <Highlight ctx={ctx} {...LEFT} from={18} to={46} label="Arrivi per fascia oraria" />
+            <Highlight ctx={ctx} {...BOTTOM} from={48} to={c1 - 4} label="Giorno della settimana × fascia oraria" />
+            {/* Frequenza */}
+            <Highlight ctx={ctx} {...LEFT} from={c1 + 12} to={c1 + 44} label="Quante volte tornano" />
+            <Highlight ctx={ctx} {...RIGHT} from={c1 + 46} to={c2 - 4} label="Frequenza media per origine" />
+            {/* Durata visita */}
+            <Highlight ctx={ctx} {...LEFT} from={c2 + 12} to={c2 + 44} label="Durata della visita (ore)" />
+            <Highlight ctx={ctx} {...RIGHT} from={c2 + 46} to={c3 - 4} label="Durata media per origine" />
+            {/* Durata pernottamento */}
+            <Highlight ctx={ctx} {...LEFT} from={c3 + 12} to={c3 + 46} label="Notti di pernottamento dei turisti" />
+            <Highlight ctx={ctx} {...BOTTOM} from={c3 + 48} label="Andamento giornaliero" />
+            <Cursor
             ctx={ctx}
             from={30}
             path={[
@@ -68,6 +86,7 @@ export const StatisticheVisite: React.FC = () => {
             ]}
             clicks={[c1, c2, c3]}
           />
+          </>
         )}
       />
     </AbsoluteFill>
@@ -93,7 +112,17 @@ export const Sociodemografico: React.FC = () => {
           {f: SCENES.sociodemografico, s: 1.08, x: 0.5, y: 0.48},
         ]}
         overlays={(ctx) => (
-          <Cursor
+          <>
+            {/* Origini nazionali */}
+            <Highlight ctx={ctx} x={0.192} y={0.3} w={0.46} h={0.645} from={16} to={46} label="Province e regioni di origine" />
+            <Highlight ctx={ctx} x={0.72} y={0.3} w={0.25} h={0.645} from={48} to={c1 - 4} label="Visitatori per provincia" />
+            {/* Età & Genere */}
+            <Highlight ctx={ctx} {...LEFT} from={c1 + 12} to={c1 + 44} label="Distribuzione per genere" />
+            <Highlight ctx={ctx} {...RIGHT} from={c1 + 46} to={c2 - 4} label="Fasce d'età" />
+            {/* Origini internazionali */}
+            <Highlight ctx={ctx} x={0.192} y={0.36} w={0.47} h={0.46} from={c2 + 12} to={c2 + 48} label="Paesi di provenienza" />
+            <Highlight ctx={ctx} x={0.72} y={0.225} w={0.25} h={0.72} from={c2 + 50} label="Top 20 paesi" />
+            <Cursor
             ctx={ctx}
             from={30}
             path={[
@@ -106,6 +135,7 @@ export const Sociodemografico: React.FC = () => {
             ]}
             clicks={[c1, c2]}
           />
+          </>
         )}
       />
     </AbsoluteFill>
@@ -120,37 +150,117 @@ export const Viaggi: React.FC = () => (
       shots={[{src: 'screens/viaggi.png', from: 0}]}
       cams={[
         {f: 0, s: 1, x: 0.5, y: 0.5},
-        {f: 70, s: 1, x: 0.5, y: 0.5},
-        {f: 165, s: 1.9, x: 0.56, y: 0.66},
+        {f: 62, s: 1, x: 0.5, y: 0.5},
+        {f: 150, s: 1.9, x: 0.56, y: 0.66},
       ]}
       overlays={(ctx) => (
         <>
-          <Highlight ctx={ctx} x={0.173} y={0.132} w={0.817} h={0.14} from={18} to={72} label="Flussi e tappe del viaggio" />
-          <Pulse ctx={ctx} x={0.563} y={0.729} from={75} />
+          <Highlight ctx={ctx} x={0.173} y={0.132} w={0.817} h={0.14} from={16} to={64} label="Viaggi totali, tappe, primo e ultimo stop" />
+          <Pulse ctx={ctx} x={0.563} y={0.729} from={66} />
+          <Highlight ctx={ctx} x={0.2} y={0.435} w={0.775} h={0.5} from={96} to={150} label="Flussi in arrivo e in partenza" />
         </>
       )}
     />
   </AbsoluteFill>
 );
 
+const NEW_SPLASH = 58;
+
+// Full-screen "Novità" title card that introduces the forecast feature.
+const NewFeatureSplash: React.FC = () => {
+  const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
+  const pill = spring({frame: frame - 2, fps, config: {damping: 12}});
+  const title = spring({frame: frame - 8, fps, config: {damping: 14}});
+  const sub = spring({frame: frame - 16, fps, config: {damping: 200}});
+  const out = interpolate(frame, [NEW_SPLASH - 14, NEW_SPLASH], [1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+  if (frame >= NEW_SPLASH) return null;
+  return (
+    <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', opacity: out, transform: `scale(${1 + (1 - out) * 0.08})`}}>
+      <div
+        style={{
+          padding: '12px 30px',
+          borderRadius: 999,
+          background: colors.orange,
+          color: 'white',
+          fontFamily: fonts.display,
+          fontWeight: 800,
+          fontSize: 30,
+          letterSpacing: 8,
+          boxShadow: `0 0 ${40 + 20 * Math.sin(frame / 4)}px rgba(255,106,0,0.8)`,
+          transform: `scale(${pill})`,
+        }}
+      >
+        NOVITÀ
+      </div>
+      <div
+        style={{
+          marginTop: 34,
+          fontFamily: fonts.display,
+          fontWeight: 800,
+          fontSize: 96,
+          letterSpacing: -2,
+          color: 'white',
+          opacity: title,
+          transform: `translateY(${(1 - title) * 40}px)`,
+        }}
+      >
+        Previsioni <span style={{color: colors.orange}}>dei flussi</span>
+      </div>
+      <div
+        style={{
+          marginTop: 18,
+          fontFamily: fonts.body,
+          fontWeight: 500,
+          fontSize: 30,
+          color: 'rgba(255,255,255,0.85)',
+          opacity: sub,
+        }}
+      >
+        Presenze, arrivi e pernottamenti attesi, con meteo ed eventi
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 export const Previsioni: React.FC = () => (
   <AbsoluteFill>
-    <Caption index={5} kicker="Previsioni" title="Anticipa i flussi di domani" highlight="domani" />
-    <AppShot
-      duration={SCENES.previsioni}
-      shots={[{src: 'screens/previsioni.png', from: 0}]}
-      cams={[
-        {f: 0, s: 1, x: 0.5, y: 0.5},
-        {f: 70, s: 1, x: 0.5, y: 0.5},
-        {f: 145, s: 1.45, x: 0.7, y: 0.6},
-      ]}
-      overlays={(ctx) => (
-        <>
-          <Highlight ctx={ctx} x={0.245} y={0.46} w={0.705} h={0.07} from={18} to={75} label="Meteo ed eventi" />
-          <Highlight ctx={ctx} x={0.672} y={0.54} w={0.265} h={0.23} from={125} label="Previsione" />
-        </>
-      )}
-    />
+    <NewFeatureSplash />
+    <Sequence from={NEW_SPLASH - 10} layout="none">
+      <Caption index={5} kicker="Previsioni" badge="Novità" title="Anticipa i flussi di domani" highlight="domani" />
+      <AppShot
+        duration={SCENES.previsioni - NEW_SPLASH}
+        shots={[{src: 'screens/previsioni.png', from: 0}]}
+        cams={[
+          {f: 0, s: 1, x: 0.5, y: 0.5},
+          {f: 118, s: 1, x: 0.5, y: 0.5},
+          {f: 165, s: 1.35, x: 0.6, y: 0.63},
+          {f: 205, s: 1.35, x: 0.6, y: 0.63},
+          {f: 245, s: 1.55, x: 0.8, y: 0.63},
+        ]}
+        overlays={(ctx) => (
+          <>
+            <Highlight ctx={ctx} x={0.172} y={0.135} w={0.82} h={0.155} from={16} to={58} label="Totali previsti per il periodo" />
+            <Highlight ctx={ctx} x={0.245} y={0.468} w={0.705} h={0.042} from={58} to={88} label="Meteo previsto giorno per giorno" />
+            {[0.4676, 0.763, 0.9115, 0.928].map((x, i) => (
+              <Highlight
+                key={x}
+                ctx={ctx}
+                x={x - 0.011}
+                y={0.505}
+                w={0.022}
+                h={0.036}
+                from={90 + i * 4}
+                to={120}
+                label={i === 0 ? 'Eventi e festività' : undefined}
+              />
+            ))}
+            <Highlight ctx={ctx} x={0.245} y={0.54} w={0.43} h={0.3} from={168} to={206} label="Dati effettivi" />
+            <Highlight ctx={ctx} x={0.672} y={0.54} w={0.268} h={0.25} from={208} label="Previsione" />
+          </>
+        )}
+      />
+    </Sequence>
   </AbsoluteFill>
 );
 
@@ -163,14 +273,14 @@ export const Agent: React.FC = () => (
       shots={[{src: 'screens/sdp-agent.png', from: 0}]}
       cams={[
         {f: 0, s: 1, x: 0.5, y: 0.5},
-        {f: 45, s: 1, x: 0.5, y: 0.5},
-        {f: 100, s: 1.6, x: 0.74, y: 0.55},
+        {f: 35, s: 1, x: 0.5, y: 0.5},
+        {f: 85, s: 1.6, x: 0.74, y: 0.55},
       ]}
       overlays={(ctx) => (
         <>
-          <Highlight ctx={ctx} x={0.487} y={0.26} w={0.51} h={0.73} from={8} to={55} label="SDP Agent" />
-          <Highlight ctx={ctx} x={0.643} y={0.385} w={0.218} h={0.056} from={95} label="Domanda dell'utente" />
-          <Highlight ctx={ctx} x={0.5} y={0.44} w={0.29} h={0.345} from={122} label="Risposta dell'agente" />
+          <Highlight ctx={ctx} x={0.487} y={0.26} w={0.51} h={0.73} from={8} to={45} label="SDP Agent" />
+          <Highlight ctx={ctx} x={0.643} y={0.385} w={0.218} h={0.056} from={78} label="Domanda dell'utente" />
+          <Highlight ctx={ctx} x={0.5} y={0.44} w={0.29} h={0.345} from={98} label="Risposta dell'agente" />
         </>
       )}
     />
@@ -187,16 +297,16 @@ export const Esportazioni: React.FC = () => {
         shots={[{src: 'screens/esportazioni.png', from: 0}]}
         cams={[
           {f: 0, s: 1, x: 0.5, y: 0.5},
-          {f: 45, s: 1, x: 0.5, y: 0.5},
-          {f: 105, s: 1.6, x: 0.8, y: 0.42},
+          {f: 30, s: 1, x: 0.5, y: 0.5},
+          {f: 85, s: 1.6, x: 0.8, y: 0.42},
         ]}
         overlays={(ctx) => (
           <Cursor
             ctx={ctx}
-            from={40}
+            from={30}
             path={[
-              {f: 40, x: 0.6, y: 0.7},
-              {f: 70, x: 0.62, y: 0.6},
+              {f: 30, x: 0.6, y: 0.7},
+              {f: 55, x: 0.62, y: 0.6},
               {f: click - 4, x: 0.955, y: 0.435},
             ]}
             clicks={[click]}

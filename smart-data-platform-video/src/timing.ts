@@ -2,16 +2,16 @@ export const FPS = 30;
 export const TRANSITION = 30;
 
 export const SCENES = {
-  intro: 180,
-  panoramica: 230,
+  intro: 160,
+  panoramica: 215,
   statistiche: 345,
   sociodemografico: 275,
-  viaggi: 230,
-  previsioni: 220,
-  agent: 175,
+  viaggi: 215,
+  previsioni: 330,
+  agent: 150,
   agentChat: 520,
-  esportazioni: 180,
-  outro: 165,
+  esportazioni: 160,
+  outro: 150,
 } as const;
 
 export type SceneName = keyof typeof SCENES;

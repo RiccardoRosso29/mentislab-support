@@ -127,8 +127,11 @@ export const Outro: React.FC = () => {
                 style={{
                   padding: '10px 22px',
                   borderRadius: 999,
-                  border: '1px solid rgba(255,106,0,0.55)',
-                  background: 'rgba(255,106,0,0.1)',
+                  border: `1px solid ${f === 'Previsioni' ? colors.orange : 'rgba(255,106,0,0.55)'}`,
+                  background: f === 'Previsioni' ? 'rgba(255,106,0,0.3)' : 'rgba(255,106,0,0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
                   color: 'white',
                   fontFamily: fonts.body,
                   fontWeight: 600,
@@ -138,6 +141,11 @@ export const Outro: React.FC = () => {
                 }}
               >
                 {f}
+                {f === 'Previsioni' ? (
+                  <span style={{fontSize: 13, fontWeight: 800, letterSpacing: 1.5, padding: '3px 9px', borderRadius: 999, background: colors.orange}}>
+                    NOVITÀ
+                  </span>
+                ) : null}
               </div>
             );
           })}
