@@ -51,7 +51,7 @@ export const Highlight: React.FC<{
             color: 'white',
             fontFamily: fonts.display,
             fontWeight: 700,
-            fontSize: 18 / ctx.scale,
+            fontSize: 15 / ctx.scale,
             letterSpacing: 0.5 / ctx.scale,
             whiteSpace: 'nowrap',
           }}
@@ -182,7 +182,7 @@ export const Chip: React.FC<{
         color: 'white',
         fontFamily: fonts.body,
         fontWeight: 600,
-        fontSize: 26,
+        fontSize: 22,
       }}
     >
       {children}

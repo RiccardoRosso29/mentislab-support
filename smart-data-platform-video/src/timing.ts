@@ -2,21 +2,31 @@ export const FPS = 30;
 export const TRANSITION = 15;
 
 export const SCENES = {
-  intro: 100,
-  panoramica: 120,
-  statistiche: 150,
-  sociodemografico: 120,
-  viaggi: 110,
-  previsioni: 105,
-  agent: 125,
-  esportazioni: 100,
-  outro: 115,
+  intro: 135,
+  panoramica: 135,
+  statistiche: 165,
+  sociodemografico: 140,
+  viaggi: 120,
+  previsioni: 110,
+  agent: 105,
+  agentChat: 340,
+  esportazioni: 110,
+  outro: 125,
 } as const;
 
-const durations = Object.values(SCENES);
-export const TOTAL_FRAMES =
-  durations.reduce((a, b) => a + b, 0) - (durations.length - 1) * TRANSITION;
+export type SceneName = keyof typeof SCENES;
 
-// Absolute frame at which the outro starts (used by global overlays)
-export const OUTRO_START = TOTAL_FRAMES - SCENES.outro;
+const names = Object.keys(SCENES) as SceneName[];
+
+// Absolute frame at which each scene starts (scenes overlap by TRANSITION frames)
+export const SCENE_START = names.reduce(
+  (acc, name, i) => {
+    acc[name] = i === 0 ? 0 : acc[names[i - 1]] + SCENES[names[i - 1]] - TRANSITION;
+    return acc;
+  },
+  {} as Record<SceneName, number>,
+);
+
+export const TOTAL_FRAMES = SCENE_START.outro + SCENES.outro;
+export const OUTRO_START = SCENE_START.outro;
 export const INTRO_END = SCENES.intro - TRANSITION;

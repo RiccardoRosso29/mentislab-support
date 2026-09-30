@@ -23,8 +23,8 @@ export const Caption: React.FC<{index: number; kicker: string; title: string; hi
           gap: 16,
           fontFamily: fonts.display,
           fontWeight: 700,
-          fontSize: 26,
-          letterSpacing: 5,
+          fontSize: 21,
+          letterSpacing: 4,
           textTransform: 'uppercase',
           color: colors.orange,
           opacity: kick,
@@ -37,15 +37,16 @@ export const Caption: React.FC<{index: number; kicker: string; title: string; hi
       </div>
       <div
         style={{
-          marginTop: 10,
+          marginTop: 14,
           fontFamily: fonts.display,
           fontWeight: 800,
-          fontSize: 76,
-          lineHeight: 1.05,
+          fontSize: 58,
+          lineHeight: 1.1,
+          letterSpacing: -1,
           color: 'white',
           display: 'flex',
           flexWrap: 'wrap',
-          columnGap: 18,
+          columnGap: 16,
         }}
       >
         {words.map((w, i) => {

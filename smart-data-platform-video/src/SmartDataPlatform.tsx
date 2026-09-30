@@ -4,10 +4,12 @@ import {fade} from '@remotion/transitions/fade';
 import {slide} from '@remotion/transitions/slide';
 import {wipe} from '@remotion/transitions/wipe';
 import {Background} from './components/Background';
+import {AgentChat} from './scenes/AgentChat';
 import {Agent, Esportazioni, Panoramica, Previsioni, Sociodemografico, StatisticheVisite, Viaggi} from './scenes/Features';
 import {Intro, Outro} from './scenes/IntroOutro';
 import {INTRO_END, OUTRO_START, SCENES, TOTAL_FRAMES, TRANSITION} from './timing';
-import {colors} from './theme';
+import {Soundtrack} from './Soundtrack';
+import {colors, fonts} from './theme';
 
 const spr = springTiming({config: {damping: 200}, durationInFrames: TRANSITION});
 const lin = linearTiming({durationInFrames: TRANSITION});
@@ -23,7 +25,7 @@ const Chrome: React.FC = () => {
     <AbsoluteFill style={{pointerEvents: 'none'}}>
       <div style={{position: 'absolute', right: 110, top: 64, display: 'flex', alignItems: 'center', gap: 18, opacity: opacity * 0.9}}>
         <Img src={staticFile('logos/w3-business-dark.png')} style={{height: 52}} />
-        <span style={{color: 'rgba(255,255,255,0.5)', fontSize: 26}}>×</span>
+        <span style={{color: 'rgba(255,255,255,0.5)', fontSize: 24, fontFamily: fonts.body}}>×</span>
         <Img src={staticFile('logos/ckdelta-dark.png')} style={{height: 52}} />
       </div>
       <div
@@ -73,6 +75,10 @@ export const SmartDataPlatform: React.FC = () => (
       <TransitionSeries.Sequence durationInFrames={SCENES.agent}>
         <Agent />
       </TransitionSeries.Sequence>
+      <TransitionSeries.Transition presentation={fade()} timing={lin} />
+      <TransitionSeries.Sequence durationInFrames={SCENES.agentChat}>
+        <AgentChat />
+      </TransitionSeries.Sequence>
       <TransitionSeries.Transition presentation={slide({direction: 'from-bottom'})} timing={spr} />
       <TransitionSeries.Sequence durationInFrames={SCENES.esportazioni}>
         <Esportazioni />
@@ -83,5 +89,6 @@ export const SmartDataPlatform: React.FC = () => (
       </TransitionSeries.Sequence>
     </TransitionSeries>
     <Chrome />
+    <Soundtrack />
   </AbsoluteFill>
 );

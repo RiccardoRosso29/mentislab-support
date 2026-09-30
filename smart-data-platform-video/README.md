@@ -1,6 +1,6 @@
 # Smart Data Platform — video promozionale
 
-Video animato di ~30 secondi (1920×1080, 30 fps) che presenta la **Smart Data Platform**,
+Video animato di 45 secondi (1920×1080, 30 fps, con musica ed effetti sonori) che presenta la **Smart Data Platform**,
 la piattaforma di mobility analytics di **WindTre Business × CKDelta**. Realizzato con [Remotion](https://www.remotion.dev).
 
 Video renderizzato: [`out/smart-data-platform.mp4`](out/smart-data-platform.mp4)
@@ -12,10 +12,11 @@ Video renderizzato: [`out/smart-data-platform.mp4`](out/smart-data-platform.mp4)
 | – | Intro | Loghi WindTre Business × CKDelta, titolo "Smart Data Platform – Mobility Analytics" |
 | 01 | Panoramica | Mappa del POI, zoom sulle KPI (Presenze, Arrivi, Pernottamenti, Visitatori) |
 | 02 | Statistiche visite | Il cursore naviga le tab Orario di arrivo → Frequenza → Durata visita → Durata pernottamento |
-| 03 | Sociodemografico | Origini nazionali → Origini internazionali → Età & genere |
+| 03 | Sociodemografico | Origini nazionali → Età & genere → Origini internazionali |
 | 04 | Viaggi dei visitatori | KPI dei viaggi e zoom sulla mappa dei flussi con impulso su Genova |
 | 05 | Previsioni | Meteo/eventi e tratto previsionale evidenziati |
-| 06 | SDP Agent | Zoom sulla chat AI e digitazione di una nuova domanda |
+| 06 | SDP Agent | Zoom sul pannello reale dell'agente (domanda e risposta evidenziate) |
+| 06 | SDP Agent · conversazione | Chat animata: l'utente digita, l'agente mostra i passaggi di "Attività", risponde con grafici e gestisce una domanda di follow-up (dati tratti dagli screenshot) |
 | 07 | Esportazioni dati | Click su "Esporta CSV" con conferma del download |
 | – | Outro | Riepilogo funzionalità, claim "Trasforma i movimenti in decisioni.", loghi |
 
@@ -25,7 +26,10 @@ Video renderizzato: [`out/smart-data-platform.mp4`](out/smart-data-platform.mp4)
 - `src/scenes/` — intro/outro e scene delle funzionalità (testi, zoom, evidenziazioni, cursore)
 - `src/components/` — sfondo animato, finestra app 3D con camera, didascalie, overlay
 - `public/screens/` — screenshot della piattaforma; `public/logos/` — loghi su sfondo trasparente
-- `public/fonts/` — font Barlow / Barlow Condensed (SIL OFL) inclusi per il render offline
+- `public/fonts/` — font Montserrat (SIL OFL) incluso per il render offline
+- `public/background.jpg` — sfondo nero/oro usato in tutto il video
+- `public/audio/` — musica (120 BPM, un beat ogni 15 frame) ed effetti sonori, generati da `scripts/generate_audio.py` (sintesi da zero, senza diritti di terzi)
+- `src/Soundtrack.tsx` — sincronizzazione di musica ed effetti con le animazioni
 
 ## Comandi
 
@@ -38,5 +42,5 @@ npm run render   # genera out/smart-data-platform.mp4
 In ambienti senza Chrome scaricabile si può passare un Chromium locale:
 `npx remotion render SmartDataPlatform out/smart-data-platform.mp4 --browser-executable=/percorso/headless_shell`.
 
-Il video non ha audio: per aggiungere una colonna sonora inserire un file in `public/` e un
-componente `<Audio src={staticFile('musica.mp3')} />` in `src/SmartDataPlatform.tsx`.
+Per rigenerare l'audio: `pip install numpy scipy && python3 scripts/generate_audio.py`.
+Per usare una musica diversa basta sostituire `public/audio/music.wav`.

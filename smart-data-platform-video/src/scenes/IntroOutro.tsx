@@ -36,7 +36,7 @@ const Title: React.FC<{frame: number; size: number}> = ({frame, size}) => {
   const {fps} = useVideoConfig();
   const letters = 'Smart Data Platform'.split('');
   return (
-    <div style={{display: 'flex', fontFamily: fonts.display, fontWeight: 800, fontSize: size, color: 'white', lineHeight: 1}}>
+    <div style={{display: 'flex', fontFamily: fonts.display, fontWeight: 800, fontSize: size, color: 'white', lineHeight: 1.1, letterSpacing: -2}}>
       {letters.map((l, i) => {
         const p = spring({frame: frame - i * 1.2, fps, config: {damping: 13, stiffness: 140}});
         return (
@@ -61,25 +61,26 @@ const Title: React.FC<{frame: number; size: number}> = ({frame, size}) => {
 export const Intro: React.FC = () => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
-  const lift = spring({frame: frame - 28, fps, config: {damping: 200}});
-  const sub = spring({frame: frame - 52, fps, config: {damping: 200}});
-  const line = spring({frame: frame - 46, fps, config: {damping: 200}});
+  const lift = spring({frame: frame - 34, fps, config: {damping: 200}});
+  const sub = spring({frame: frame - 62, fps, config: {damping: 200}});
+  const line = spring({frame: frame - 56, fps, config: {damping: 200}});
+  const claim = spring({frame: frame - 82, fps, config: {damping: 200}});
 
   return (
     <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center'}}>
       <div style={{transform: `translateY(${-lift * 210}px) scale(${1 - lift * 0.42})`}}>
         <Logos frame={frame} />
       </div>
-      <div style={{position: 'absolute', top: 430, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-        {frame >= 30 ? <Title frame={frame - 30} size={150} /> : null}
+      <div style={{position: 'absolute', top: 400, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+        {frame >= 38 ? <Title frame={frame - 38} size={116} /> : null}
         <div style={{marginTop: 26, width: 560 * line, height: 5, borderRadius: 3, background: colors.orange, boxShadow: `0 0 24px ${colors.orange}`}} />
         <div
           style={{
             marginTop: 28,
             fontFamily: fonts.body,
-            fontWeight: 500,
-            fontSize: 40,
-            letterSpacing: 12,
+            fontWeight: 600,
+            fontSize: 30,
+            letterSpacing: 14,
             textTransform: 'uppercase',
             color: colors.muted,
             opacity: sub,
@@ -87,6 +88,19 @@ export const Intro: React.FC = () => {
           }}
         >
           Mobility Analytics
+        </div>
+        <div
+          style={{
+            marginTop: 40,
+            fontFamily: fonts.body,
+            fontWeight: 500,
+            fontSize: 28,
+            color: 'rgba(255,255,255,0.85)',
+            opacity: claim,
+            transform: `translateY(${(1 - claim) * 20}px)`,
+          }}
+        >
+          Conoscere il territorio attraverso i dati di mobilità
         </div>
       </div>
     </AbsoluteFill>
@@ -117,8 +131,8 @@ export const Outro: React.FC = () => {
                   background: 'rgba(255,106,0,0.1)',
                   color: 'white',
                   fontFamily: fonts.body,
-                  fontWeight: 500,
-                  fontSize: 24,
+                  fontWeight: 600,
+                  fontSize: 20,
                   opacity: p,
                   transform: `translateY(${(1 - p) * 24}px)`,
                 }}
@@ -128,13 +142,13 @@ export const Outro: React.FC = () => {
             );
           })}
         </div>
-        <Title frame={frame - 6} size={140} />
+        <Title frame={frame - 6} size={108} />
         <div
           style={{
             marginTop: 30,
             fontFamily: fonts.display,
-            fontWeight: 500,
-            fontSize: 50,
+            fontWeight: 600,
+            fontSize: 38,
             color: colors.muted,
             opacity: tag,
             transform: `translateY(${(1 - tag) * 20}px)`,
