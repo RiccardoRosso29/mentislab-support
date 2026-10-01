@@ -63,10 +63,9 @@
     box-shadow: 0 .3em 1.2em rgba(0,0,0,.45); opacity: 0;
   }
   .typed {
-    position: absolute; left: 2.5%; top: 0; width: 17%; height: 3.55%;
-    background: #131313; color: #e3e3e3; opacity: 0; pointer-events: none; white-space: nowrap;
-    font: 400 calc(var(--k, .5) * 25px)/calc(var(--k, .5) * 32px) "Google Sans", Roboto, Arial, sans-serif;
-    padding-left: calc(var(--k, .5) * 7px);
+    position: absolute; background: #131313; color: #e3e3e3; opacity: 0; pointer-events: none; white-space: nowrap; overflow: hidden;
+    font: 500 calc(var(--k, .5) * 21px)/calc(var(--k, .5) * 33px) "Google Sans", Roboto, Arial, sans-serif;
+    padding-left: calc(var(--k, .5) * 6px);
   }
   .typed .caret { display: inline-block; width: calc(var(--k, .5) * 2px); height: 1em; background: #8ab4f8; vertical-align: -.12em; margin-left: 1px; }
 
@@ -177,16 +176,19 @@
     </section>
 
     <section class="slide" data-step="6">
-      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/6-file.webp}}" alt="Titolo del progetto in alto a sinistra"></div></div>
+      <div class="stage"><div class="cam">
+        <img class="a" src="{{IMG:slides/6-modifica.webp}}" alt="Riquadro del poligono con il pulsante Modifica">
+        <img class="b" src="{{IMG:slides/6-nome.webp}}" alt="Riquadro in modifica con il nome del poligono in alto">
+      </div></div>
       <div class="info"><div class="n">6</div><div>
         <div class="count">Passo 6 di 7</div>
-        <h2>Rinomina con il nome del luogo</h2>
-        <p>Clicca sul titolo in alto a sinistra (<span class="ui">Progetto di mappa senza titolo</span>), scrivi il nome del luogo rappresentato, ad esempio <code>La Spezia - centro</code>, e premi Invio.</p>
+        <h2>Rinomina il poligono con il nome del luogo</h2>
+        <p>Nel riquadro del poligono clicca <span class="ui">Modifica</span>. Poi scrivi il nome del luogo nel campo in alto, ad esempio <code>Centro di La Spezia</code>, e clicca <span class="ui">Fine</span>.</p>
       </div></div>
     </section>
 
     <section class="slide" data-step="7">
-      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/6-file.webp}}" alt="Menu File con la voce Esporta come file KML"></div></div>
+      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/7-file.webp}}" alt="Menu File con la voce Esporta come file KML"></div></div>
       <div class="info"><div class="n">7</div><div>
         <div class="count">Passo 7 di 7</div>
         <h2>Esporta come file KML</h2>
@@ -264,7 +266,7 @@
   function blank() {
     return { z: 1, f: { x: W / 2, y: H / 2 }, bOpacity: 0, aShift: null, spot: null, spotOp: 0,
       ripple: null, cursor: null, press: 0, cursorOp: 1, label: null, labelOp: 0, labelAbove: false,
-      poly: null, typed: null, typedOp: 0 };
+      poly: null, typed: null, typedBox: null, typedOp: 0 };
   }
 
   var cam, imgA, imgB, stage;
@@ -334,6 +336,10 @@
     } else label.style.opacity = 0;
 
     typed.style.opacity = s.typedOp;
+    if (s.typedBox) {
+      typed.style.left = (s.typedBox.x / W * 100) + "%"; typed.style.top = (s.typedBox.y / H * 100) + "%";
+      typed.style.width = (s.typedBox.w / W * 100) + "%"; typed.style.height = (s.typedBox.h / H * 100) + "%";
+    }
     if (s.typed !== null) typed.innerHTML = s.typed.replace(/&/g, "&amp;").replace(/</g, "&lt;") + '<span class="caret"></span>';
   }
 
@@ -429,8 +435,8 @@
     } };
   }
 
-  var NAME = "La Spezia - centro";
-  var TITLE = { x: 52, y: 2, w: 304, h: 30 };
+  var NAME = "Centro di La Spezia";
+  var NAME_FIELD = { x: 1690, y: 142, w: 212, h: 36 };
   var SCENES = {
     1: clickScene({ zoom: 1.5, clicks: [{ rect: { x: 1794, y: 5, w: 136, h: 45 }, at: 2100, label: "Clicca «Avvia Earth»" }] }),
     2: clickScene({ zoom: 1.6, clicks: [{ rect: { x: 12, y: 68, w: 108, h: 54 }, at: 2100, label: "Clicca «+ Nuovo»" }] }),
@@ -438,14 +444,19 @@
     4: clickScene({ zoom: 1.6, clicks: [{ rect: { x: 546, y: 4, w: 42, h: 38 }, at: 2100, label: "Clicca l'icona «Percorso o poligono»" }] }),
     5: drawScene(),
     6: clickScene({
-      zoom: 1.7, dur: 7400, still: 5600,
-      clicks: [{ rect: TITLE, at: 2100, label: "Clicca il titolo e scrivi il nome del luogo" }],
+      zoom: 1.6, dur: 8800, still: 5400, focus: { x: 1810, y: 330 },
+      clicks: [
+        { rect: { x: 1654, y: 471, w: 108, h: 39 }, at: 2100, label: "1 · Clicca «Modifica»" },
+        { rect: NAME_FIELD, at: 3700, label: "2 · Scrivi il nome del luogo" },
+        { rect: { x: 1655, y: 441, w: 80, h: 38 }, at: 6700, label: "3 · Clicca «Fine»" }
+      ],
       extra: function (t, s) {
-        // Dopo il clic il titolo viene sostituito, lettera per lettera, dal nome del luogo.
-        var n = Math.round(tw(t, 2700, 4700, 0, NAME.length) );
+        // Dopo «Modifica» il riquadro passa in modifica; il nome viene riscritto lettera per lettera.
+        s.bOpacity = tw(t, 2400, 2800, 0, 1);
+        var n = Math.round(tw(t, 4000, 5800, 0, NAME.length));
         s.typed = NAME.slice(0, Math.max(0, Math.min(NAME.length, n)));
-        s.typedOp = t > 2500 && t < 6500 ? 1 : 0;
-        if (t > 2500) s.cursorOp = Math.min(s.cursorOp, tw(t, 2500, 2800, 1, 0));
+        s.typedBox = NAME_FIELD;
+        s.typedOp = t > 3750 && t < 6000 ? 1 : 0;
       }
     }),
     7: clickScene({
