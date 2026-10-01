@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guida KML · WindTre Business</title>
+<meta name="description" content="Guida interattiva per creare e scaricare un file KML con Google Earth: esempio del poligono che contorna il centro storico di Lucca.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root {
+    --brand: #FF6A00;
+    --brand-dark: #0B0B0D;
+    --bg: #f4f4f4;
+    --surface: #ffffff;
+    --surface-2: #ececec;
+    --text: #1b1b1b;
+    --muted: #5c5c62;
+    --border: #e0e0e0;
+    --accent: #FF6A00;
+    --accent-text: #C24E00;
+    --accent-soft: #FFE6D4;
+    --ok: #2e7d4f;
+    --ok-soft: #dcefe3;
+    --warn: #9a6a00;
+    --warn-soft: #fbefd0;
+    --code-bg: #1f2226;
+    --code-text: #e8e6e1;
+    --code-tag: #f0a77f;
+    --code-attr: #9fd3a8;
+    --code-val: #f3d98b;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0B0B0D; --surface: #17171B; --surface-2: #222228; --text: #ffffff;
+      --muted: rgba(255,255,255,.68); --border: #2c2c33; --accent: #FF6A00; --accent-text: #FF8A3D; --accent-soft: #3a1f0c;
+      --ok: #6cc28f; --ok-soft: #1d3326; --warn: #e2b34a; --warn-soft: #372c13;
+      --code-bg: #0f1113; --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0B0B0D; --surface: #17171B; --surface-2: #222228; --text: #ffffff;
+    --muted: rgba(255,255,255,.68); --border: #2c2c33; --accent: #FF6A00; --accent-text: #FF8A3D; --accent-soft: #3a1f0c;
+    --ok: #6cc28f; --ok-soft: #1d3326; --warn: #e2b34a; --warn-soft: #372c13;
+    --code-bg: #0f1113; --shadow: none;
+  }
+
+  @font-face { font-family: "Montserrat"; font-weight: 400; font-display: swap; src: url("assets/montserrat-400.woff2") format("woff2"); }
+  @font-face { font-family: "Montserrat"; font-weight: 500 600; font-display: swap; src: url("assets/montserrat-600.woff2") format("woff2"); }
+  @font-face { font-family: "Montserrat"; font-weight: 700 800; font-display: swap; src: url("assets/montserrat-800.woff2") format("woff2"); }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--accent-text); }
+  code, pre, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  code { background: var(--surface-2); padding: .1em .35em; border-radius: 5px; font-size: .9em; }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+
+  .brand-band { background: radial-gradient(120% 140% at 100% 0%, rgba(255,106,0,.28) 0%, rgba(255,106,0,0) 55%), var(--brand-dark); color: #fff; }
+  .brand-band .lead { color: rgba(255,255,255,.75); }
+  .brand-band code { background: rgba(255,255,255,.1); color: #fff; }
+  .brand-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 20px; }
+  .brand-bar img { height: 52px; width: auto; display: block; }
+  .brand-bar .tag { font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.6); }
+  .brand-band .btn { background: transparent; color: #fff; border-color: rgba(255,255,255,.3); }
+  .brand-band .btn:hover { border-color: var(--brand); }
+  .brand-band h1 em { font-style: normal; color: var(--brand); }
+  .brand-band .accent-line { width: 120px; height: 4px; border-radius: 3px; background: var(--brand); box-shadow: 0 0 18px var(--brand); margin-top: 24px; }
+  header.hero { padding: 40px 0 44px; }
+  h1, h2 { font-weight: 800; letter-spacing: -.01em; }
+  .eyebrow { color: var(--brand); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: .78rem; }
+  h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.15; margin: .3em 0 .4em; }
+  h2 { font-size: 1.5rem; margin: 0 0 .4em; }
+  h3 { font-size: 1.1rem; margin: 0 0 .4em; }
+  .lead { color: var(--muted); font-size: 1.1rem; max-width: 70ch; margin: 0; }
+
+  nav.toc { position: sticky; top: 0; z-index: 1000; background: var(--bg); border-bottom: 1px solid var(--border); }
+  nav.toc .wrap { display: flex; gap: 6px; overflow-x: auto; padding-top: 10px; padding-bottom: 10px; }
+  nav.toc a {
+    white-space: nowrap; text-decoration: none; color: var(--muted); font-size: .9rem;
+    padding: 6px 12px; border-radius: 999px; border: 1px solid transparent;
+  }
+  nav.toc a:hover { color: var(--text); border-color: var(--border); }
+  nav.toc a.active { color: var(--accent-text); background: var(--accent-soft); }
+
+  section { padding: 40px 0; border-bottom: 1px solid var(--border); scroll-margin-top: 56px; }
+  section:last-of-type { border-bottom: 0; }
+  .section-intro { color: var(--muted); max-width: 72ch; margin: 0 0 24px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .pad { padding: 20px; }
+
+  .grid-3 { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .concept .num {
+    display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+    background: var(--brand); color: #fff; font-weight: 700; margin-bottom: 8px;
+  }
+  .concept p { margin: 0; color: var(--muted); }
+
+  .btn {
+    appearance: none; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    font: inherit; font-size: .92rem; padding: 8px 16px; border-radius: 999px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.small { padding: 5px 10px; font-size: .85rem; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* Tabs */
+  .tabs { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 4px; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tabs button {
+    border: 0; background: transparent; color: var(--muted); font: inherit; font-size: .92rem;
+    padding: 7px 14px; border-radius: 7px; cursor: pointer;
+  }
+  .tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600; }
+
+  /* Stepper */
+  .stepper { display: grid; grid-template-columns: 260px 1fr; gap: 0; overflow: hidden; }
+  .step-list { list-style: none; margin: 0; padding: 12px; border-right: 1px solid var(--border); background: var(--surface-2); }
+  .step-list li button {
+    width: 100%; text-align: left; border: 0; background: transparent; color: var(--muted);
+    font: inherit; font-size: .9rem; padding: 8px 10px; border-radius: 8px; cursor: pointer;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .step-list li button:hover { background: var(--surface); color: var(--text); }
+  .step-list li button.current { background: var(--surface); color: var(--text); font-weight: 600; }
+  .step-list .dot {
+    flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border);
+    display: grid; place-items: center; font-size: .72rem; background: var(--surface); margin-top: 1px;
+  }
+  .step-list button.current .dot { border-color: var(--accent); color: var(--accent-text); }
+  .step-list button.done .dot { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .step-body { padding: 24px; display: flex; flex-direction: column; min-height: 360px; }
+  .step-body .meta { color: var(--muted); font-size: .85rem; margin-bottom: 4px; }
+  .step-body .content { flex: 1; }
+  .step-body ul, .step-body ol { padding-left: 1.2em; }
+  .step-body li { margin: .25em 0; }
+  .kbd { display: inline-block; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; font-size: .82em; background: var(--surface-2); }
+  .ui { font-weight: 600; color: var(--text); background: var(--accent-soft); padding: 0 6px; border-radius: 4px; }
+  .progress { height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; margin: 18px 0 14px; }
+  .progress > div { height: 100%; background: linear-gradient(90deg, #FF6A00, #FF8A3D); width: 0; transition: width .3s; }
+  .step-nav { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .check { display: inline-flex; gap: 8px; align-items: center; font-size: .9rem; color: var(--muted); cursor: pointer; }
+
+  .callout { border-radius: 10px; padding: 12px 14px; margin: 14px 0; font-size: .93rem; }
+  .callout.tip { background: var(--ok-soft); }
+  .callout.warn { background: var(--warn-soft); }
+  .callout strong { display: block; margin-bottom: 2px; }
+
+  /* Editor */
+  .editor { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; }
+  #map { height: 460px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface-2); }
+  .map-fallback { height: 100%; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 20px; }
+  .map-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .mode-pill { font-size: .82rem; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+  .mode-pill.drawing { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+  .field { display: grid; gap: 4px; margin-bottom: 12px; }
+  .field label { font-size: .85rem; color: var(--muted); font-weight: 600; }
+  .field input[type="text"], .field textarea {
+    width: 100%; font: inherit; font-size: .93rem; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  }
+  .field textarea { resize: vertical; min-height: 60px; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .color-row { display: flex; gap: 8px; align-items: center; }
+  .color-row input[type="color"] { width: 42px; height: 34px; border: 1px solid var(--border); border-radius: 6px; padding: 2px; background: var(--surface); }
+  .color-row input[type="range"] { flex: 1; min-width: 0; }
+  .kml-color { font-size: .8rem; color: var(--muted); }
+  .kml-color b { color: var(--text); font-family: ui-monospace, Menlo, Consolas, monospace; }
+
+  .vertices { max-height: 170px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; font-size: .82rem; }
+  .vertices table { width: 100%; border-collapse: collapse; }
+  .vertices th, .vertices td { padding: 5px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+  .vertices th { position: sticky; top: 0; background: var(--surface-2); font-weight: 600; color: var(--muted); }
+  .vertices td.num { font-variant-numeric: tabular-nums; }
+  .vertices tr.closing td { color: var(--muted); font-style: italic; }
+  .vertices button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; }
+  .vertices button:hover { color: var(--accent); }
+  .status { font-size: .88rem; margin: 10px 0 0; padding: 8px 12px; border-radius: 8px; }
+  .status.ok { background: var(--ok-soft); color: var(--ok); }
+  .status.bad { background: var(--warn-soft); color: var(--warn); }
+
+  .code-wrap { position: relative; margin-top: 16px; }
+  .code-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  pre.code {
+    margin: 0; background: var(--code-bg); color: var(--code-text); border-radius: var(--radius);
+    padding: 16px; overflow: auto; font-size: .8rem; line-height: 1.55; max-height: 420px;
+  }
+  .t-tag { color: var(--code-tag); }
+  .t-attr { color: var(--code-attr); }
+  .t-val { color: var(--code-val); }
+  .t-com { color: #8a8f96; }
+
+  /* Anatomy */
+  .anatomy { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .anatomy pre.code { max-height: none; padding: 10px 0; }
+  .anatomy .ln { display: block; padding: 0 16px; cursor: pointer; border-left: 3px solid transparent; }
+  .anatomy .ln:hover { background: rgba(255,255,255,.05); }
+  .anatomy .ln.hl { background: rgba(240,167,127,.16); border-left-color: var(--code-tag); }
+  .explain { position: sticky; top: 72px; }
+  .explain .tag { display: inline-block; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .85rem; color: var(--accent-text); background: var(--accent-soft); padding: 2px 8px; border-radius: 6px; margin-bottom: 8px; }
+  .explain p { margin: .4em 0; }
+  .parts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+
+  /* Color lab */
+  .color-lab { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: center; }
+  .swatch { width: 120px; height: 120px; border-radius: 12px; border: 1px solid var(--border);
+    background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%);
+    background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0; position: relative; overflow: hidden; }
+  .swatch > div { position: absolute; inset: 0; }
+  .hexbig { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1.6rem; letter-spacing: .04em; }
+  .hexbig span { padding: 0 2px; border-radius: 4px; }
+  .seg-a { background: rgba(127,127,127,.2); }
+  .seg-b { background: rgba(70,120,230,.22); }
+  .seg-g { background: rgba(60,170,90,.22); }
+  .seg-r { background: rgba(220,70,60,.22); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .82rem; color: var(--muted); margin-top: 6px; }
+
+  /* Quiz */
+  .quiz { display: grid; gap: 14px; }
+  .q h3 { font-size: 1rem; }
+  .q .opts { display: grid; gap: 8px; }
+  .q .opts button {
+    text-align: left; font: inherit; font-size: .93rem; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer;
+  }
+  .q .opts button:hover:not(:disabled) { border-color: var(--accent); }
+  .q .opts button.right { background: var(--ok-soft); border-color: var(--ok); }
+  .q .opts button.wrong { background: var(--warn-soft); border-color: var(--warn); }
+  .q .fb { font-size: .9rem; color: var(--muted); margin-top: 8px; min-height: 1.2em; }
+  .score { font-weight: 600; }
+
+  details.faq { border-bottom: 1px solid var(--border); padding: 12px 0; }
+  details.faq summary { cursor: pointer; font-weight: 600; }
+  details.faq p { color: var(--muted); margin: .5em 0 0; }
+
+  footer { color: var(--muted); font-size: .85rem; padding: 28px 0 48px; }
+
+
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); opacity: 0;
+    background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: .9rem;
+    transition: all .25s; pointer-events: none; z-index: 2000;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .leaflet-container { font: inherit; }
+  .vertex-icon { background: #FF6A00; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.3); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; }
+
+  @media (max-width: 860px) {
+    .stepper { grid-template-columns: 1fr; }
+    .step-list { border-right: 0; border-bottom: 1px solid var(--border); display: flex; overflow-x: auto; gap: 4px; }
+    .step-list li button { white-space: nowrap; }
+    .step-list .label { display: none; }
+    .step-list button.current .label { display: inline; }
+    .editor, .anatomy { grid-template-columns: 1fr; }
+    #map { height: 360px; }
+    .explain { position: static; }
+    .color-lab { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 480px) {
+    .row-2 { grid-template-columns: 1fr; }
+    .hexbig { font-size: 1.25rem; }
+    .brand-bar img { height: 40px; }
+    .brand-bar .tag { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="brand-band">
+  <div class="wrap brand-bar">
+    <img src="assets/w3-business-dark.png" alt="WindTre Business">
+    <div style="display:flex;align-items:center;gap:14px">
+      <span class="tag">Guide operative</span>
+      <button class="btn small" id="themeToggle" type="button" aria-label="Cambia tema">◐ Tema</button>
+    </div>
+  </div>
+  <header class="hero wrap">
+    <div class="eyebrow">Guida interattiva · Google Earth</div>
+    <h1>Creare e scaricare un file KML:<br>il poligono del <em>centro storico di Lucca</em></h1>
+    <p class="lead">Un file KML descrive forme geografiche (punti, linee, poligoni) in un formato che Google Earth, Google Maps e i software GIS sanno leggere. In questa guida disegniamo il perimetro delle mura rinascimentali di Lucca, che racchiudono per intero il centro storico, e lo salviamo in un file <code>.kml</code>.</p>
+    <div class="accent-line"></div>
+  </header>
+</div>
+
+<nav class="toc" aria-label="Sezioni">
+  <div class="wrap">
+    <a href="#basi">1 · Le basi</a>
+    <a href="#procedura">2 · Procedura in Google Earth</a>
+    <a href="#laboratorio">3 · Laboratorio: disegna e scarica</a>
+    <a href="#anatomia">4 · Anatomia del KML</a>
+    <a href="#colori">5 · I colori nel KML</a>
+    <a href="#quiz">6 · Verifica</a>
+    <a href="#problemi">7 · Problemi frequenti</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <!-- 1. BASI -->
+  <section id="basi">
+    <h2>1 · Le basi in tre concetti</h2>
+    <p class="section-intro">Prima di iniziare, tre idee che rendono chiaro tutto il resto.</p>
+    <div class="grid-3">
+      <div class="card pad concept">
+        <div class="num">1</div>
+        <h3>KML è testo XML</h3>
+        <p>Il file è leggibile con qualsiasi editor di testo. Contiene tag come <code>&lt;Placemark&gt;</code> e <code>&lt;Polygon&gt;</code>. La variante <code>.kmz</code> è lo stesso file compresso in ZIP, magari con immagini allegate.</p>
+      </div>
+      <div class="card pad concept">
+        <div class="num">2</div>
+        <h3>Un poligono è un anello chiuso</h3>
+        <p>Si definisce con una sequenza di vertici. Nel KML l'ultimo vertice deve coincidere con il primo: è così che l'anello si chiude. Google Earth lo fa per te quando disegni.</p>
+      </div>
+      <div class="card pad concept">
+        <div class="num">3</div>
+        <h3>Prima la longitudine</h3>
+        <p>Le coordinate si scrivono <code>longitudine,latitudine,altitudine</code>, l'ordine opposto a quello abituale. Lucca è <code>10.505,43.843</code>, non <code>43.843,10.505</code>.</p>
+      </div>
+    </div>
+    <div class="callout tip" style="margin-top:20px">
+      <strong>Perché proprio Lucca?</strong>
+      Le mura cinquecentesche, lunghe circa 4,2 km e con 11 baluardi, circondano il centro storico senza interruzioni. Basta seguirle per ottenere un poligono pulito e riconoscibile, perfetto come primo esercizio.
+    </div>
+  </section>
+
+  <!-- 2. PROCEDURA -->
+  <section id="procedura">
+    <h2>2 · Procedura passo per passo</h2>
+    <p class="section-intro">Scegli la versione di Google Earth che usi. Segui i passaggi e spunta quelli completati: l'avanzamento resta salvato nel browser.</p>
+
+    <div class="tabs" role="tablist" id="versionTabs">
+      <button role="tab" aria-selected="true" data-version="web">Google Earth Web (browser)</button>
+      <button role="tab" aria-selected="false" data-version="pro">Google Earth Pro (desktop)</button>
+    </div>
+
+    <div class="card stepper">
+      <ol class="step-list" id="stepList"></ol>
+      <div class="step-body">
+        <div class="meta" id="stepMeta"></div>
+        <div class="content" id="stepContent"></div>
+        <div class="progress"><div id="stepProgress"></div></div>
+        <div class="step-nav">
+          <label class="check"><input type="checkbox" id="stepDone"> Ho completato questo passaggio</label>
+          <div class="btn-row">
+            <button class="btn" id="prevStep" type="button">← Indietro</button>
+            <button class="btn primary" id="nextStep" type="button">Avanti →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p style="color:var(--muted);font-size:.85rem;margin-top:10px">I nomi di menu e pulsanti si riferiscono all'interfaccia in italiano e possono cambiare leggermente tra una versione e l'altra di Google Earth.</p>
+  </section>
+
+  <!-- 3. LABORATORIO -->
+  <section id="laboratorio">
+    <h2>3 · Laboratorio: disegna e scarica il tuo KML</h2>
+    <p class="section-intro">Qui puoi esercitarti senza aprire Google Earth. Il poligono di esempio segue i baluardi delle mura di Lucca. Trascina i vertici per correggerli oppure cancella tutto e disegna da zero. Il codice KML si aggiorna in tempo reale e puoi scaricarlo e aprirlo in Google Earth.</p>
+
+    <div class="editor">
+      <div>
+        <div class="map-toolbar">
+          <button class="btn small" id="loadExample" type="button">↺ Esempio Lucca</button>
+          <button class="btn small" id="toggleDraw" type="button">✎ Disegna</button>
+          <button class="btn small" id="undoVertex" type="button">↶ Annulla vertice</button>
+          <button class="btn small" id="clearAll" type="button">✕ Svuota</button>
+          <span class="mode-pill" id="modePill">Modifica: trascina i vertici</span>
+        </div>
+        <div id="map"><div class="map-fallback" id="mapFallback">Caricamento della mappa…</div></div>
+      </div>
+
+      <div class="card pad">
+        <div class="field">
+          <label for="kName">Nome del poligono</label>
+          <input type="text" id="kName" value="Centro storico di Lucca">
+        </div>
+        <div class="field">
+          <label for="kDesc">Descrizione</label>
+          <textarea id="kDesc">Perimetro approssimativo delle mura rinascimentali (XVI-XVII sec.) che racchiudono il centro storico.</textarea>
+        </div>
+        <div class="row-2">
+          <div class="field">
+            <label for="fillColor">Riempimento</label>
+            <div class="color-row">
+              <input type="color" id="fillColor" value="#ff6a00">
+              <input type="range" id="fillAlpha" min="0" max="100" value="35" aria-label="Opacità del riempimento">
+            </div>
+            <div class="kml-color">KML: <b id="fillKml"></b></div>
+          </div>
+          <div class="field">
+            <label for="lineColor">Bordo</label>
+            <div class="color-row">
+              <input type="color" id="lineColor" value="#d95a00">
+              <input type="range" id="lineWidth" min="1" max="8" value="3" aria-label="Spessore del bordo">
+            </div>
+            <div class="kml-color">KML: <b id="lineKml"></b> · spessore <b id="lineWidthVal">3</b></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Vertici (longitudine, latitudine)</label>
+          <div class="vertices"><table><thead><tr><th>#</th><th>Lon</th><th>Lat</th><th></th></tr></thead><tbody id="vertexTable"></tbody></table></div>
+        </div>
+        <div id="status" class="status"></div>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-head">
+        <h3 style="margin:0">Il tuo file KML</h3>
+        <div class="btn-row">
+          <button class="btn small" id="copyKml" type="button">⧉ Copia</button>
+          <button class="btn small primary" id="downloadKml" type="button">⬇ Scarica .kml</button>
+        </div>
+      </div>
+      <pre class="code" id="kmlOut"></pre>
+    </div>
+    <div class="callout tip">
+      <strong>Come aprirlo in Google Earth</strong>
+      Web: <span class="ui">Progetti</span> → <span class="ui">Apri</span> → <span class="ui">Importa file KML dal computer</span>. Pro: <span class="ui">File</span> → <span class="ui">Apri…</span>, oppure trascina il file sulla finestra.
+    </div>
+  </section>
+
+  <!-- 4. ANATOMIA -->
+  <section id="anatomia">
+    <h2>4 · Anatomia di un file KML</h2>
+    <p class="section-intro">Clicca su una riga del codice, o su un'etichetta qui sotto, per sapere a cosa serve. È la struttura che Google Earth produce quando esporti il poligono.</p>
+    <div class="anatomy">
+      <pre class="code" id="anatomyCode"></pre>
+      <div class="card pad explain" id="explainBox"></div>
+    </div>
+  </section>
+
+  <!-- 5. COLORI -->
+  <section id="colori">
+    <h2>5 · I colori nel KML: l'ordine al contrario</h2>
+    <p class="section-intro">Nel web i colori si scrivono <code>#RRGGBB</code>. Il KML invece usa <code>aabbggrr</code>: prima l'opacità (alpha), poi blu, verde e rosso. Se modifichi il file a mano, è facile ritrovarsi un poligono blu invece che rosso. Prova qui la conversione.</p>
+    <div class="card pad color-lab">
+      <div class="swatch"><div id="labSwatch"></div></div>
+      <div>
+        <div class="color-row" style="margin-bottom:12px;flex-wrap:wrap">
+          <input type="color" id="labColor" value="#ff6a00" aria-label="Colore">
+          <span class="mono" id="labHex" style="min-width:80px"></span>
+          <label style="font-size:.85rem;color:var(--muted)" for="labAlpha">Opacità</label>
+          <input type="range" id="labAlpha" min="0" max="100" value="60" style="max-width:200px">
+          <span class="mono" id="labAlphaVal"></span>
+        </div>
+        <div class="hexbig" id="labKml"></div>
+        <div class="legend">
+          <span><span class="seg-a" style="padding:0 6px;border-radius:3px">aa</span> opacità</span>
+          <span><span class="seg-b" style="padding:0 6px;border-radius:3px">bb</span> blu</span>
+          <span><span class="seg-g" style="padding:0 6px;border-radius:3px">gg</span> verde</span>
+          <span><span class="seg-r" style="padding:0 6px;border-radius:3px">rr</span> rosso</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. QUIZ -->
+  <section id="quiz">
+    <h2>6 · Verifica: hai capito?</h2>
+    <p class="section-intro">Quattro domande veloci sui punti in cui si sbaglia più spesso. <span class="score" id="score"></span></p>
+    <div class="quiz" id="quizBox"></div>
+  </section>
+
+  <!-- 7. PROBLEMI -->
+  <section id="problemi">
+    <h2>7 · Problemi frequenti</h2>
+    <details class="faq">
+      <summary>Il poligono compare in mezzo all'oceano o in Africa</summary>
+      <p>Hai quasi certamente invertito latitudine e longitudine. Nel KML va prima la longitudine: <code>10.505,43.843,0</code>.</p>
+    </details>
+    <details class="faq">
+      <summary>Vedo solo il contorno, non il riempimento</summary>
+      <p>Controlla in <code>&lt;PolyStyle&gt;</code> che <code>&lt;fill&gt;</code> non sia <code>0</code> e che i primi due caratteri del colore (l'alpha) non siano <code>00</code>, cioè completamente trasparente.</p>
+    </details>
+    <details class="faq">
+      <summary>Il bordo "galleggia" o sparisce sotto il terreno</summary>
+      <p>Usa <code>&lt;altitudeMode&gt;clampToGround&lt;/altitudeMode&gt;</code> con <code>&lt;tessellate&gt;1&lt;/tessellate&gt;</code>: il poligono segue il rilievo. In Google Earth Pro puoi impostarlo nella scheda <span class="ui">Altitudine</span> scegliendo <span class="ui">Bloccato a terra</span>.</p>
+    </details>
+    <details class="faq">
+      <summary>Ho salvato un .kmz ma mi serve un .kml</summary>
+      <p>In Google Earth Pro, nella finestra <span class="ui">Salva file</span>, cambia il tipo in <span class="ui">Kml (*.kml)</span>. In alternativa rinomina il <code>.kmz</code> in <code>.zip</code> ed estrai il file <code>doc.kml</code> che contiene.</p>
+    </details>
+    <details class="faq">
+      <summary>Ho chiuso Google Earth Pro e il poligono è sparito</summary>
+      <p>Gli elementi nella cartella <span class="ui">Luoghi temporanei</span> non vengono salvati alla chiusura. Trascinali in <span class="ui">I miei luoghi</span>, oppure esportali come KML prima di uscire.</p>
+    </details>
+    <details class="faq">
+      <summary>Il poligono si "attorciglia" su se stesso</summary>
+      <p>I vertici devono seguire il perimetro in ordine, in senso orario o antiorario, senza saltare da un lato all'altro. Nel laboratorio puoi trascinarli per correggere l'ordine o cancellare quello sbagliato dalla tabella.</p>
+    </details>
+  </section>
+</main>
+
+<footer class="wrap">
+  <strong style="color:var(--text)">WindTre Business</strong> · Guida interattiva KML e Google Earth.<br>
+  Le coordinate del poligono di esempio sono indicative: seguono i baluardi delle mura di Lucca con una precisione di qualche decina di metri, sufficiente a scopo didattico. Mappa © contributori OpenStreetMap.
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Helpers ----------
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+  const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  function toast(msg) {
+    const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2000);
+  }
+
+  // ---------- Theme ----------
+  const savedTheme = store.get("kml-theme", null);
+  if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+  $("#themeToggle").addEventListener("click", () => {
+    const cur = document.documentElement.getAttribute("data-theme") ||
+      (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    store.set("kml-theme", next);
+  });
+
+  // ---------- TOC highlight ----------
+  const tocLinks = $$("nav.toc a");
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) tocLinks.forEach(a => a.classList.toggle("active", a.getAttribute("href") === "#" + e.target.id));
+    });
+  }, { rootMargin: "-40% 0px -55% 0px" });
+  $$("main section").forEach(s => io.observe(s));
+
+  // ---------- Stepper ----------
+  const STEPS = {
+    web: [
+      { t: "Apri Google Earth", h: `
+        <h3>Apri Google Earth nel browser</h3>
+        <p>Vai su <a href="https://earth.google.com/web/" target="_blank" rel="noopener">earth.google.com/web</a> con Chrome, Edge o Firefox e accedi con il tuo account Google: senza account i progetti non vengono salvati.</p>
+        <div class="callout tip"><strong>Perché serve l'account?</strong>Google Earth Web salva i progetti su Google Drive, ma l'esportazione in KML produce un file sul tuo computer, indipendente dall'account.</div>` },
+      { t: "Vai a Lucca", h: `
+        <h3>Raggiungi il centro storico di Lucca</h3>
+        <p>Clicca sulla lente <span class="ui">Cerca</span> e scrivi <code>Lucca</code>, oppure incolla le coordinate <code>43.8430, 10.5050</code>.</p>
+        <p>Zooma finché vedi tutto l'anello verde delle mura. Una vista dall'alto, a circa 2–3 km di quota, è l'ideale. Premi <span class="kbd">U</span> per raddrizzare la visuale in verticale.</p>` },
+      { t: "Crea un progetto KML", h: `
+        <h3>Crea un nuovo progetto come file KML</h3>
+        <ol>
+          <li>Nel menu a sinistra apri <span class="ui">Progetti</span>.</li>
+          <li>Clicca <span class="ui">Nuovo progetto</span> e scegli <span class="ui">Crea file KML</span>.</li>
+          <li>Dai un titolo al progetto, ad esempio <em>Centri storici</em>.</li>
+        </ol>
+        <div class="callout warn"><strong>Attenzione</strong>Se scegli "Crea in Google Drive" il progetto resta sul cloud. L'opzione "file KML" rende l'esportazione più diretta.</div>` },
+      { t: "Disegna il poligono", h: `
+        <h3>Disegna il perimetro delle mura</h3>
+        <ol>
+          <li>Nel progetto clicca <span class="ui">Aggiungi elemento</span> → <span class="ui">Disegna linea o forma</span>.</li>
+          <li>Clicca sulla mappa in corrispondenza della punta di ogni baluardo. Gira tutto intorno alle mura nello stesso verso, orario o antiorario.</li>
+          <li>Per chiudere la forma clicca di nuovo sul <strong>primo punto</strong>: la linea diventa un poligono.</li>
+        </ol>
+        <div class="callout tip"><strong>Quanti punti?</strong>Per Lucca bastano 10–12 vertici, uno per baluardo. Più punti danno più precisione ma rendono il file più pesante e difficile da correggere.</div>` },
+      { t: "Nome e stile", h: `
+        <h3>Assegna nome e stile</h3>
+        <p>Nel pannello che si apre:</p>
+        <ul>
+          <li><strong>Titolo:</strong> <em>Centro storico di Lucca</em>.</li>
+          <li><strong>Colore e opacità del riempimento:</strong> scegli un colore e abbassa l'opacità (30–40%) così si vedono gli edifici sotto.</li>
+          <li><strong>Colore e spessore della linea:</strong> un bordo più scuro aiuta la leggibilità.</li>
+        </ul>
+        <p>Salva con <span class="ui">Salva</span>. Se ti accorgi di un vertice sbagliato, seleziona il poligono, entra in modifica e trascina il punto.</p>` },
+      { t: "Esporta in KML", h: `
+        <h3>Scarica il file KML</h3>
+        <ol>
+          <li>Torna nell'elenco dei <span class="ui">Progetti</span>.</li>
+          <li>Clicca i tre puntini <span class="ui">⋮</span> accanto al progetto.</li>
+          <li>Scegli <span class="ui">Esporta come file KML</span>.</li>
+        </ol>
+        <p>Il browser scarica un file <code>.kml</code> nella cartella Download. Aprilo con un editor di testo: troverai una struttura come quella della sezione <a href="#anatomia">Anatomia</a>.</p>` },
+      { t: "Verifica", h: `
+        <h3>Verifica il risultato</h3>
+        <ul>
+          <li>Riapri il file: <span class="ui">Progetti</span> → <span class="ui">Apri</span> → <span class="ui">Importa file KML dal computer</span>.</li>
+          <li>Controlla che il poligono ricopra il centro storico e che i bordi seguano le mura.</li>
+          <li>Prova ad aprirlo anche in Google My Maps o in QGIS: il KML è uno standard OGC.</li>
+        </ul>
+        <div class="callout tip"><strong>Fatto!</strong>Ora prova il <a href="#laboratorio">laboratorio</a> per vedere come cambia il codice quando sposti i vertici.</div>` }
+    ],
+    pro: [
+      { t: "Apri Google Earth Pro", h: `
+        <h3>Avvia Google Earth Pro</h3>
+        <p>Google Earth Pro è gratuito per Windows, macOS e Linux e si scarica dal sito di Google Earth. A differenza della versione web, salva i file direttamente sul computer.</p>` },
+      { t: "Vai a Lucca", h: `
+        <h3>Raggiungi Lucca</h3>
+        <p>Nel pannello <span class="ui">Cerca</span> in alto a sinistra scrivi <code>Lucca, Italia</code> e premi <span class="kbd">Invio</span>.</p>
+        <p>Inquadra tutto l'anello delle mura con una vista dall'alto: premi <span class="kbd">U</span> per azzerare l'inclinazione e <span class="kbd">N</span> per orientare il nord in alto.</p>` },
+      { t: "Strumento Poligono", h: `
+        <h3>Avvia lo strumento Poligono</h3>
+        <p>Dal menu <span class="ui">Aggiungi</span> → <span class="ui">Poligono</span>, con la scorciatoia <span class="kbd">Ctrl</span>+<span class="kbd">Maiusc</span>+<span class="kbd">G</span> (<span class="kbd">⌘</span>+<span class="kbd">⇧</span>+<span class="kbd">G</span> su Mac), oppure con l'icona del poligono nella barra in alto.</p>
+        <p>Si apre la finestra <span class="ui">Nuovo poligono</span>. <strong>Non chiuderla</strong>: mentre è aperta il cursore diventa un mirino e puoi disegnare.</p>` },
+      { t: "Disegna il perimetro", h: `
+        <h3>Disegna sulle mura</h3>
+        <ul>
+          <li><strong>Clic singolo:</strong> aggiunge un vertice. Clicca la punta di ogni baluardo procedendo in un solo verso.</li>
+          <li><strong>Clic e trascina:</strong> disegna a mano libera, utile per i tratti curvi.</li>
+          <li><strong>Clic destro:</strong> elimina l'ultimo vertice.</li>
+        </ul>
+        <p>Non serve tornare sul primo punto: Google Earth Pro chiude l'anello da solo.</p>` },
+      { t: "Nome, stile e altitudine", h: `
+        <h3>Completa la finestra "Nuovo poligono"</h3>
+        <ul>
+          <li><strong>Nome:</strong> <em>Centro storico di Lucca</em>.</li>
+          <li>Scheda <span class="ui">Descrizione</span>: un testo che comparirà nel fumetto.</li>
+          <li>Scheda <span class="ui">Stile, colore</span>: colore e spessore della <em>Linea</em>; colore e opacità dell'<em>Area</em> (es. 35%).</li>
+          <li>Scheda <span class="ui">Altitudine</span>: lascia <span class="ui">Bloccato a terra</span> perché il poligono segua il terreno.</li>
+        </ul>
+        <p>Premi <span class="ui">OK</span>. Il poligono compare nel pannello <span class="ui">Luoghi</span>, in <span class="ui">I miei luoghi</span>.</p>` },
+      { t: "Salva come KML", h: `
+        <h3>Esporta il file</h3>
+        <ol>
+          <li>Nel pannello <span class="ui">Luoghi</span> fai clic destro sul poligono (o sulla cartella che lo contiene).</li>
+          <li>Scegli <span class="ui">Salva luogo come…</span></li>
+          <li>Nel menu <span class="ui">Tipo file</span> seleziona <span class="ui">Kml (*.kml)</span>. Il predefinito è <code>.kmz</code>.</li>
+          <li>Dai un nome, ad esempio <code>centro-storico-lucca.kml</code>, e salva.</li>
+        </ol>
+        <div class="callout warn"><strong>KML o KMZ?</strong>Il KMZ è compresso e può includere icone e immagini. Per un semplice poligono il KML è più comodo perché si apre e si modifica come testo.</div>` },
+      { t: "Verifica", h: `
+        <h3>Verifica il risultato</h3>
+        <ul>
+          <li>Elimina il poligono dal pannello e riapri il file con <span class="ui">File</span> → <span class="ui">Apri…</span>.</li>
+          <li>Per correggerlo: clic destro → <span class="ui">Proprietà</span>. Mentre la finestra è aperta puoi trascinare i vertici.</li>
+        </ul>
+        <div class="callout tip"><strong>Fatto!</strong>Confronta il tuo file con quello generato nel <a href="#laboratorio">laboratorio</a>.</div>` }
+    ]
+  };
+
+  let version = store.get("kml-version", "web");
+  let stepIdx = 0;
+  let done = store.get("kml-done", { web: [], pro: [] });
+
+  function renderSteps() {
+    const steps = STEPS[version];
+    $$("#versionTabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.version === version));
+    $("#stepList").innerHTML = steps.map((s, i) => {
+      const isDone = done[version].includes(i);
+      return `<li><button type="button" data-i="${i}" class="${i === stepIdx ? "current" : ""} ${isDone ? "done" : ""}">
+        <span class="dot">${isDone ? "✓" : i + 1}</span><span class="label">${s.t}</span></button></li>`;
+    }).join("");
+    $("#stepMeta").textContent = `Passaggio ${stepIdx + 1} di ${steps.length}`;
+    $("#stepContent").innerHTML = steps[stepIdx].h;
+    $("#stepDone").checked = done[version].includes(stepIdx);
+    $("#stepProgress").style.width = (done[version].length / steps.length * 100) + "%";
+    $("#prevStep").disabled = stepIdx === 0;
+    $("#nextStep").textContent = stepIdx === steps.length - 1 ? "Vai al laboratorio →" : "Avanti →";
+  }
+  $("#versionTabs").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    version = b.dataset.version; stepIdx = 0; store.set("kml-version", version); renderSteps();
+  });
+  $("#stepList").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    stepIdx = +b.dataset.i; renderSteps();
+  });
+  $("#prevStep").addEventListener("click", () => { if (stepIdx > 0) { stepIdx--; renderSteps(); } });
+  $("#nextStep").addEventListener("click", () => {
+    if (!done[version].includes(stepIdx)) { done[version].push(stepIdx); store.set("kml-done", done); }
+    if (stepIdx < STEPS[version].length - 1) { stepIdx++; renderSteps(); }
+    else { renderSteps(); location.hash = "#laboratorio"; }
+  });
+  $("#stepDone").addEventListener("change", e => {
+    const arr = done[version];
+    if (e.target.checked) { if (!arr.includes(stepIdx)) arr.push(stepIdx); }
+    else done[version] = arr.filter(i => i !== stepIdx);
+    store.set("kml-done", done); renderSteps();
+  });
+  renderSteps();
+
+  // ---------- KML color helpers ----------
+  function kmlColor(hex, alphaPct) {
+    const h = hex.replace("#", "");
+    const r = h.slice(0, 2), g = h.slice(2, 4), b = h.slice(4, 6);
+    const a = Math.round(alphaPct / 100 * 255).toString(16).padStart(2, "0");
+    return (a + b + g + r).toLowerCase();
+  }
+
+  // ---------- Lucca example (lon, lat) – approximate bastion tips, clockwise from W ----------
+  const LUCCA = [
+    [10.49560, 43.84330], // Baluardo San Donato
+    [10.49760, 43.84690], // Baluardo Santa Croce
+    [10.50250, 43.84790], // Baluardo San Frediano
+    [10.50760, 43.84800], // Baluardo San Martino
+    [10.51200, 43.84640], // Baluardo San Salvatore
+    [10.51340, 43.84300], // Baluardo La Libertà
+    [10.51210, 43.84010], // Baluardo San Regolo
+    [10.50690, 43.83880], // Baluardo San Colombano
+    [10.50180, 43.83900], // Baluardo Santa Maria
+    [10.49780, 43.84030], // Baluardo San Paolino
+    [10.49550, 43.84150]  // Baluardo San Pietro
+  ];
+
+  let verts = store.get("kml-verts", null) || LUCCA.map(p => p.slice());
+
+  // ---------- KML generation ----------
+  function buildKml() {
+    const name = $("#kName").value.trim() || "Poligono";
+    const desc = $("#kDesc").value.trim();
+    const fill = kmlColor($("#fillColor").value, +$("#fillAlpha").value);
+    const line = kmlColor($("#lineColor").value, 100);
+    const width = $("#lineWidth").value;
+    const ring = verts.length ? verts.concat([verts[0]]) : [];
+    const coords = ring.map(([lon, lat]) => `              ${lon.toFixed(6)},${lat.toFixed(6)},0`).join("\n");
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>${esc(name)}</name>
+    <Style id="stile-poligono">
+      <LineStyle>
+        <color>${line}</color>
+        <width>${width}</width>
+      </LineStyle>
+      <PolyStyle>
+        <color>${fill}</color>
+        <fill>1</fill>
+        <outline>1</outline>
+      </PolyStyle>
+    </Style>
+    <Placemark>
+      <name>${esc(name)}</name>
+      <description>${esc(desc)}</description>
+      <styleUrl>#stile-poligono</styleUrl>
+      <Polygon>
+        <tessellate>1</tessellate>
+        <altitudeMode>clampToGround</altitudeMode>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+${coords}
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+  </Document>
+</kml>
+`;
+  }
+
+  function highlight(xml) {
+    return esc(xml)
+      .replace(/(&lt;\?xml.*?\?&gt;)/, '<span class="t-com">$1</span>')
+      .replace(/(&lt;\/?)([A-Za-z]+)([^&]*?)(\/?&gt;)/g, (m, open, tag, attrs, close) => {
+        const a = attrs.replace(/([\w:]+)=(&quot;.*?&quot;)/g, '<span class="t-attr">$1</span>=<span class="t-val">$2</span>');
+        return `<span class="t-tag">${open}${tag}</span>${a}<span class="t-tag">${close}</span>`;
+      });
+  }
+
+  // ---------- Map ----------
+  let map = null, polygon = null, markers = [], drawing = false;
+
+  function vertexIcon(i) {
+    return L.divIcon({ className: "", html: `<div class="vertex-icon" style="width:20px;height:20px">${i + 1}</div>`, iconSize: [20, 20], iconAnchor: [10, 10] });
+  }
+
+  function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+  function redrawMap() {
+    if (!map) return;
+    markers.forEach(m => m.remove()); markers = [];
+    if (polygon) { polygon.remove(); polygon = null; }
+    const latlngs = verts.map(([lon, lat]) => [lat, lon]);
+    if (latlngs.length >= 2) {
+      polygon = (latlngs.length >= 3 ? L.polygon : L.polyline)(latlngs, {
+        color: $("#lineColor").value, weight: +$("#lineWidth").value,
+        fillColor: $("#fillColor").value, fillOpacity: +$("#fillAlpha").value / 100,
+        interactive: false
+      }).addTo(map);
+    }
+    verts.forEach(([lon, lat], i) => {
+      const m = L.marker([lat, lon], { draggable: true, icon: vertexIcon(i), keyboard: false }).addTo(map);
+      m.on("drag", ev => {
+        const p = ev.target.getLatLng(); verts[i] = [p.lng, p.lat];
+        if (polygon) polygon.setLatLngs(verts.map(([a, b]) => [b, a]));
+      });
+      m.on("dragend", () => update());
+      markers.push(m);
+    });
+  }
+
+  function initMap() {
+    if (typeof L === "undefined") {
+      $("#mapFallback").innerHTML = "La mappa non è disponibile (sei offline?).<br>Puoi comunque modificare stile e nome e scaricare il KML di esempio.";
+      return;
+    }
+    $("#map").innerHTML = "";
+    map = L.map("map", { zoomControl: true }).setView([43.8430, 10.5048], 15);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19, attribution: "© OpenStreetMap"
+    }).addTo(map);
+    map.on("click", e => {
+      if (!drawing) return;
+      verts.push([e.latlng.lng, e.latlng.lat]); update();
+    });
+    redrawMap();
+    if (verts.length >= 2) map.fitBounds(verts.map(([lon, lat]) => [lat, lon]), { padding: [24, 24] });
+  }
+
+  function setDrawing(on) {
+    drawing = on;
+    $("#toggleDraw").textContent = on ? "✓ Fine disegno" : "✎ Disegna";
+    $("#toggleDraw").classList.toggle("primary", on);
+    const pill = $("#modePill");
+    pill.textContent = on ? "Disegno: clicca sulla mappa per aggiungere vertici" : "Modifica: trascina i vertici";
+    pill.classList.toggle("drawing", on);
+    if (map) map.getContainer().style.cursor = on ? "crosshair" : "";
+  }
+
+  // ---------- Panel ----------
+  function renderTable() {
+    const rows = verts.map(([lon, lat], i) =>
+      `<tr><td>${i + 1}</td><td class="num mono">${lon.toFixed(5)}</td><td class="num mono">${lat.toFixed(5)}</td>
+       <td><button type="button" data-del="${i}" aria-label="Elimina vertice ${i + 1}">×</button></td></tr>`);
+    if (verts.length >= 3) {
+      rows.push(`<tr class="closing"><td>↩</td><td class="num mono">${verts[0][0].toFixed(5)}</td><td class="num mono">${verts[0][1].toFixed(5)}</td><td title="Il KML ripete il primo vertice per chiudere l'anello">=1</td></tr>`);
+    }
+    $("#vertexTable").innerHTML = rows.join("") || `<tr><td colspan="4" style="color:var(--muted)">Nessun vertice. Premi “Disegna” e clicca sulla mappa.</td></tr>`;
+  }
+
+  function update() {
+    $("#fillKml").textContent = kmlColor($("#fillColor").value, +$("#fillAlpha").value);
+    $("#lineKml").textContent = kmlColor($("#lineColor").value, 100);
+    $("#lineWidthVal").textContent = $("#lineWidth").value;
+    const st = $("#status");
+    if (verts.length >= 3) {
+      st.className = "status ok";
+      st.textContent = `✓ Poligono valido: ${verts.length} vertici + 1 di chiusura. Pronto da scaricare.`;
+    } else {
+      st.className = "status bad";
+      st.textContent = `Servono almeno 3 vertici per un poligono (ora: ${verts.length}).`;
+    }
+    $("#downloadKml").disabled = verts.length < 3;
+    $("#kmlOut").innerHTML = highlight(buildKml());
+    renderTable();
+    redrawMap();
+    store.set("kml-verts", verts);
+  }
+
+  $("#vertexTable").addEventListener("click", e => {
+    const b = e.target.closest("button[data-del]"); if (!b) return;
+    verts.splice(+b.dataset.del, 1); update();
+  });
+  ["#kName", "#kDesc", "#fillColor", "#fillAlpha", "#lineColor", "#lineWidth"].forEach(s =>
+    $(s).addEventListener("input", update));
+  $("#toggleDraw").addEventListener("click", () => setDrawing(!drawing));
+  $("#undoVertex").addEventListener("click", () => { verts.pop(); update(); });
+  $("#clearAll").addEventListener("click", () => { verts = []; update(); setDrawing(true); toast("Ora clicca sulla mappa per aggiungere vertici"); });
+  $("#loadExample").addEventListener("click", () => {
+    verts = LUCCA.map(p => p.slice()); setDrawing(false); update();
+    if (map) map.fitBounds(verts.map(([lon, lat]) => [lat, lon]), { padding: [24, 24] });
+    toast("Esempio di Lucca caricato");
+  });
+
+  $("#copyKml").addEventListener("click", async () => {
+    const text = buildKml();
+    try { await navigator.clipboard.writeText(text); toast("KML copiato negli appunti"); }
+    catch (e) {
+      const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); toast("KML copiato negli appunti"); } catch (_) { toast("Copia non riuscita"); }
+      ta.remove();
+    }
+  });
+  $("#downloadKml").addEventListener("click", () => {
+    const name = ($("#kName").value.trim() || "poligono").toLowerCase()
+      .normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const blob = new Blob([buildKml()], { type: "application/vnd.google-earth.kml+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = (name || "poligono") + ".kml";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast("Download avviato: " + a.download);
+  });
+
+  initMap();
+  update();
+
+  // ---------- Anatomy ----------
+  const ANATOMY = [
+    { l: '<?xml version="1.0" encoding="UTF-8"?>', k: "xml" },
+    { l: '<kml xmlns="http://www.opengis.net/kml/2.2">', k: "kml" },
+    { l: '  <Document>', k: "doc" },
+    { l: '    <name>Centro storico di Lucca</name>', k: "doc" },
+    { l: '    <Style id="stile-poligono">', k: "style" },
+    { l: '      <LineStyle><color>ff005ad9</color><width>3</width></LineStyle>', k: "line" },
+    { l: '      <PolyStyle><color>59006aff</color></PolyStyle>', k: "poly" },
+    { l: '    </Style>', k: "style" },
+    { l: '    <Placemark>', k: "pm" },
+    { l: '      <name>Centro storico di Lucca</name>', k: "pm" },
+    { l: '      <styleUrl>#stile-poligono</styleUrl>', k: "styleurl" },
+    { l: '      <Polygon>', k: "polygon" },
+    { l: '        <tessellate>1</tessellate>', k: "alt" },
+    { l: '        <altitudeMode>clampToGround</altitudeMode>', k: "alt" },
+    { l: '        <outerBoundaryIs><LinearRing>', k: "ring" },
+    { l: '          <coordinates>', k: "coords" },
+    { l: '            10.4956,43.8433,0', k: "coords" },
+    { l: '            10.4976,43.8469,0', k: "coords" },
+    { l: '            …', k: "coords" },
+    { l: '            10.4956,43.8433,0', k: "close" },
+    { l: '          </coordinates>', k: "coords" },
+    { l: '        </LinearRing></outerBoundaryIs>', k: "ring" },
+    { l: '      </Polygon>', k: "polygon" },
+    { l: '    </Placemark>', k: "pm" },
+    { l: '  </Document>', k: "doc" },
+    { l: '</kml>', k: "kml" }
+  ];
+  const EXPLAIN = {
+    xml: ["Dichiarazione XML", "&lt;?xml …?&gt;", "Indica che il file è XML codificato in UTF-8. Grazie a UTF-8 puoi usare lettere accentate nei nomi, come <em>Città</em>."],
+    kml: ["Radice &lt;kml&gt;", "&lt;kml xmlns=…&gt;", "Il contenitore di tutto. L'attributo <code>xmlns</code> dichiara la versione dello standard (KML 2.2, gestito da OGC). Deve esserci una sola radice per file."],
+    doc: ["Document", "&lt;Document&gt;", "Raggruppa stili e oggetti. Il suo <code>&lt;name&gt;</code> è il nome che vedi nel pannello di Google Earth. Per raggruppare più elementi al suo interno si usano i <code>&lt;Folder&gt;</code>."],
+    style: ["Style", "&lt;Style id=…&gt;", "Definisce un aspetto riutilizzabile, identificato da un <code>id</code>. Più poligoni possono condividere lo stesso stile."],
+    line: ["LineStyle", "&lt;LineStyle&gt;", "Colore e spessore (in pixel) del bordo. Il colore è in formato <code>aabbggrr</code>: <code>ff</code> = opaco. Vedi la sezione <a href=\"#colori\">Colori</a>."],
+    poly: ["PolyStyle", "&lt;PolyStyle&gt;", "Colore del riempimento. Qui l'alpha <code>59</code> (≈ 35%) rende l'area semitrasparente. Con <code>&lt;fill&gt;0&lt;/fill&gt;</code> resterebbe solo il bordo."],
+    pm: ["Placemark", "&lt;Placemark&gt;", "Il \"segnaposto\": un singolo oggetto geografico con nome, descrizione, stile e geometria. Ogni poligono, linea o punto è un Placemark."],
+    styleurl: ["styleUrl", "&lt;styleUrl&gt;", "Collega il Placemark allo stile definito sopra. Il <code>#</code> indica uno stile nello stesso file."],
+    polygon: ["Polygon", "&lt;Polygon&gt;", "La geometria. Un poligono ha un confine esterno (<code>outerBoundaryIs</code>) e può avere \"buchi\" (<code>innerBoundaryIs</code>), ad esempio per escludere un parco."],
+    alt: ["Altitudine", "tessellate / altitudeMode", "<code>clampToGround</code> appoggia il poligono al terreno. <code>tessellate=1</code> fa seguire ai bordi le ondulazioni del rilievo invece di tagliare in linea retta."],
+    ring: ["LinearRing", "&lt;LinearRing&gt;", "Un anello chiuso di coordinate: il perimetro vero e proprio."],
+    coords: ["coordinates", "&lt;coordinates&gt;", "Una tupla per vertice: <strong>longitudine,latitudine,altitudine</strong>, senza spazi dopo le virgole. Le tuple sono separate da spazi o a capo. Gradi decimali, datum WGS84."],
+    close: ["Vertice di chiusura", "ultimo = primo", "L'ultima coordinata ripete esattamente la prima: è obbligatorio per chiudere il <code>LinearRing</code>. Google Earth lo aggiunge da solo quando disegni."]
+  };
+  const KEYS = ["kml", "doc", "style", "pm", "polygon", "coords", "close"];
+  let curKey = "pm";
+  function renderAnatomy() {
+    $("#anatomyCode").innerHTML = ANATOMY.map((r, i) =>
+      `<span class="ln ${r.k === curKey ? "hl" : ""}" data-k="${r.k}">${highlight(r.l)}</span>`).join("");
+    const [title, tag, txt] = EXPLAIN[curKey];
+    $("#explainBox").innerHTML = `<span class="tag">${tag}</span><h3>${title}</h3><p>${txt}</p>
+      <div class="parts">${KEYS.map(k => `<button type="button" class="btn small ${k === curKey ? "primary" : ""}" data-k="${k}">${EXPLAIN[k][0]}</button>`).join("")}</div>`;
+  }
+  $("#anatomyCode").addEventListener("click", e => { const l = e.target.closest(".ln"); if (l) { curKey = l.dataset.k; renderAnatomy(); } });
+  $("#explainBox").addEventListener("click", e => { const b = e.target.closest("button[data-k]"); if (b) { curKey = b.dataset.k; renderAnatomy(); } });
+  renderAnatomy();
+
+  // ---------- Color lab ----------
+  function renderLab() {
+    const hex = $("#labColor").value, a = +$("#labAlpha").value;
+    const k = kmlColor(hex, a);
+    $("#labHex").textContent = hex.toUpperCase();
+    $("#labAlphaVal").textContent = a + "%";
+    $("#labSwatch").style.background = hex; $("#labSwatch").style.opacity = a / 100;
+    $("#labKml").innerHTML = `<span class="seg-a">${k.slice(0, 2)}</span><span class="seg-b">${k.slice(2, 4)}</span><span class="seg-g">${k.slice(4, 6)}</span><span class="seg-r">${k.slice(6, 8)}</span>`;
+  }
+  $("#labColor").addEventListener("input", renderLab);
+  $("#labAlpha").addEventListener("input", renderLab);
+  renderLab();
+
+  // ---------- Quiz ----------
+  const QUIZ = [
+    { q: "Come si scrive la posizione di Piazza Anfiteatro a Lucca dentro <code>&lt;coordinates&gt;</code>?",
+      o: ["43.8456,10.5068,0", "10.5068,43.8456,0", "10.5068 43.8456 0"], a: 1,
+      e: "Prima la longitudine, poi la latitudine, separate da virgole senza spazi." },
+    { q: "Hai un poligono con 11 vertici. Quante coordinate contiene il <code>&lt;LinearRing&gt;</code>?",
+      o: ["11", "12", "10"], a: 1,
+      e: "11 vertici più la ripetizione del primo per chiudere l'anello: 12." },
+    { q: "Vuoi un riempimento rosso puro e opaco. Quale colore KML scrivi?",
+      o: ["ffff0000", "ff0000ff", "0000ffff"], a: 1,
+      e: "aabbggrr → alpha ff, blu 00, verde 00, rosso ff = ff0000ff. ffff0000 sarebbe blu!" },
+    { q: "In Google Earth Pro, \"Salva luogo come…\" propone di default…",
+      o: ["un file .kmz, da cambiare in .kml se serve", "sempre un file .kml", "un file .gpx"], a: 0,
+      e: "Il formato predefinito è KMZ (compresso): scegli \"Kml (*.kml)\" nel tipo di file." }
+  ];
+  const answers = {};
+  function renderQuiz() {
+    $("#quizBox").innerHTML = QUIZ.map((x, qi) => `
+      <div class="card pad q" data-q="${qi}">
+        <h3>${qi + 1}. ${x.q}</h3>
+        <div class="opts">${x.o.map((o, oi) => {
+          let cls = "";
+          if (qi in answers) { if (oi === x.a) cls = "right"; else if (oi === answers[qi]) cls = "wrong"; }
+          return `<button type="button" class="${cls} ${/^[\d,. a-f]+$/.test(o) ? "mono" : ""}" data-o="${oi}" ${qi in answers ? "disabled" : ""}>${o}</button>`;
+        }).join("")}</div>
+        <div class="fb">${qi in answers ? (answers[qi] === x.a ? "✓ Esatto. " : "✗ Non proprio. ") + x.e : ""}</div>
+      </div>`).join("");
+    const n = Object.keys(answers).length;
+    const ok = Object.entries(answers).filter(([q, o]) => QUIZ[q].a === o).length;
+    $("#score").innerHTML = n ? `Punteggio: ${ok}/${QUIZ.length}${n === QUIZ.length ? ' · <a href="#" id="quizReset">ricomincia</a>' : ""}` : "";
+  }
+  $("#quizBox").addEventListener("click", e => {
+    const b = e.target.closest("button[data-o]"); if (!b || b.disabled) return;
+    const qi = +b.closest(".q").dataset.q; answers[qi] = +b.dataset.o; renderQuiz();
+  });
+  $("#score").addEventListener("click", e => {
+    if (e.target.id === "quizReset") { e.preventDefault(); Object.keys(answers).forEach(k => delete answers[k]); renderQuiz(); }
+  });
+  renderQuiz();
+})();
+</script>
+</body>
+</html>
