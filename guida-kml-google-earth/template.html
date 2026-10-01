@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Poligono KML · WindTre Business</title>
-<meta name="description" content="Come disegnare un poligono in Google Earth ed esportarlo in formato KML.">
+<meta name="description" content="Come disegnare un poligono in Google Earth ed esportarlo in formato KML, in 7 slide animate.">
 <style>
   @font-face { font-family: "Montserrat"; font-weight: 400 600; src: url("{{FONT600}}") format("woff2"); }
   @font-face { font-family: "Montserrat"; font-weight: 700 800; src: url("{{FONT800}}") format("woff2"); }
@@ -32,191 +32,483 @@
   }
 
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 "Montserrat", system-ui, sans-serif; }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 0 16px; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 "Montserrat", system-ui, sans-serif; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
 
-  header { background: radial-gradient(120% 160% at 100% 0%, rgba(255,106,0,.3), rgba(255,106,0,0) 55%), var(--dark); color: #fff; padding: 22px 0 40px; }
-  .logos { display: flex; align-items: center; gap: 18px; margin-bottom: 32px; }
-  .logo { height: 52px; width: auto; display: block; }
-  .logo.ck { height: 58px; }
-  .x { color: rgba(255,255,255,.45); font-size: 1.4rem; font-weight: 600; }
-  .eyebrow { color: var(--brand); font-weight: 700; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; }
-  h1 { font-size: clamp(1.7rem, 4.5vw, 2.4rem); font-weight: 800; line-height: 1.15; margin: .3em 0 .5em; }
+  header { background: radial-gradient(120% 160% at 100% 0%, rgba(255,106,0,.3), rgba(255,106,0,0) 55%), var(--dark); color: #fff; padding: 18px 0 22px; }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .logos { display: flex; align-items: center; gap: 14px; }
+  .logo { height: 44px; width: auto; display: block; }
+  .logo.ck { height: 48px; }
+  .x { color: rgba(255,255,255,.45); font-size: 1.2rem; font-weight: 600; }
+  .eyebrow { color: var(--brand); font-weight: 700; font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; }
+  h1 { font-size: clamp(1.3rem, 3vw, 1.8rem); font-weight: 800; line-height: 1.2; margin: .15em 0 0; }
   h1 em { font-style: normal; color: var(--brand); }
-  header p { color: rgba(255,255,255,.75); margin: 0; max-width: 60ch; }
 
-  .steps { list-style: none; margin: 0; padding: 32px 0 8px; display: grid; gap: 20px; }
-  .step { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
-  .step-text { display: flex; gap: 16px; padding: 20px 20px 16px; }
-  .n { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 800; display: grid; place-items: center; }
-  .step h2 { font-size: 1.15rem; font-weight: 800; margin: 4px 0 6px; }
-  .step p, .step ol { margin: 0; color: var(--muted); }
-  .step ol { padding-left: 1.1em; }
-  .step li { margin: .2em 0; }
-  .ui { color: var(--text); font-weight: 700; background: var(--brand-soft); padding: 0 6px; border-radius: 4px; white-space: nowrap; }
+  main { padding: 20px 0 32px; }
+
+  /* Slide */
+  .slide { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 20px; }
+  .stage { position: relative; aspect-ratio: 2000 / 960; overflow: hidden; background: #111; }
+  .cam { position: absolute; inset: 0; will-change: transform; }
+  .cam img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .cam img.b { opacity: 0; }
+  .ov { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .label {
+    position: absolute; white-space: nowrap; pointer-events: none;
+    background: var(--brand); color: #fff; font-weight: 800;
+    font-size: calc(var(--k, .5) * 30px); padding: .4em .8em; border-radius: 999px;
+    box-shadow: 0 .3em 1.2em rgba(0,0,0,.45); opacity: 0;
+  }
+  .typed {
+    position: absolute; left: 2.5%; top: 0; width: 17%; height: 3.55%;
+    background: #131313; color: #e3e3e3; opacity: 0; pointer-events: none; white-space: nowrap;
+    font: 400 calc(var(--k, .5) * 25px)/calc(var(--k, .5) * 32px) "Google Sans", Roboto, Arial, sans-serif;
+    padding-left: calc(var(--k, .5) * 7px);
+  }
+  .typed .caret { display: inline-block; width: calc(var(--k, .5) * 2px); height: 1em; background: #8ab4f8; vertical-align: -.12em; margin-left: 1px; }
+
+  .info { padding: 18px 22px 20px; display: flex; gap: 16px; }
+  .n { flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 800; display: grid; place-items: center; }
+  .count { color: var(--muted); font-size: .8rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .info h2 { font-size: 1.2rem; font-weight: 800; margin: 0 0 4px; }
+  .info p { margin: 0; color: var(--muted); }
+  .ui { color: var(--text); font-weight: 700; background: var(--brand-soft); padding: 0 6px; border-radius: 4px; }
   code { background: var(--brand-soft); color: var(--text); padding: 0 6px; border-radius: 4px; font-size: .9em; }
 
-  figure { margin: 0; border-top: 1px solid var(--border); background: #000; }
-  figure img, figure video { display: block; width: 100%; height: auto; }
-  figure img { cursor: zoom-in; }
-  .shot-missing { aspect-ratio: 16 / 9; display: grid; place-items: center; text-align: center; padding: 20px;
-    background: repeating-linear-gradient(45deg, var(--bg), var(--bg) 12px, var(--surface) 12px, var(--surface) 24px);
-    color: var(--muted); font-size: .9rem; }
-  .shot-missing b { color: var(--brand-text); display: block; font-size: 1rem; }
+  /* Navigazione (attiva solo con JavaScript) */
+  .nav { display: none; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+  .arrow {
+    width: 54px; height: 54px; border-radius: 50%; border: 0; cursor: pointer;
+    background: var(--brand); color: #fff; font: 800 1.5rem/1 "Montserrat", sans-serif;
+    display: grid; place-items: center; box-shadow: 0 4px 14px rgba(255,106,0,.35);
+  }
+  .arrow:hover { filter: brightness(1.08); }
+  .arrow:disabled { background: var(--border); color: var(--muted); box-shadow: none; cursor: default; }
+  .dots { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .dots button { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface); color: var(--muted); font: 700 .85rem/1 "Montserrat", sans-serif; cursor: pointer; }
+  .dots button[aria-current="true"] { border-color: var(--brand); background: var(--brand); color: #fff; }
 
-  .done { margin: 12px 0 0; padding: 16px 20px; border-radius: 14px; background: var(--brand-soft); }
-  footer { color: var(--muted); font-size: .82rem; padding: 28px 0 40px; }
+  html.js .slide { display: none; margin-bottom: 0; }
+  html.js .slide.active { display: block; }
+  html.js .nav { display: flex; }
 
-  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.88); display: none; place-items: center; padding: 16px; z-index: 10; cursor: zoom-out; }
-  .lightbox.open { display: grid; }
-  .lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+  footer { color: var(--muted); font-size: .8rem; padding: 0 0 32px; }
 
-  @media (max-width: 520px) {
-    .logos { margin-bottom: 24px; gap: 12px; }
-    .logo { height: 38px; }
-    .logo.ck { height: 42px; }
-    .step-text { padding: 16px; gap: 12px; }
-    .n { width: 30px; height: 30px; font-size: .9rem; }
+  @media (max-width: 640px) {
+    .logo { height: 34px; } .logo.ck { height: 38px; }
+    .info { padding: 14px 16px 16px; gap: 12px; }
+    .n { width: 32px; height: 32px; }
+    .arrow { width: 46px; height: 46px; }
+    .dots { gap: 5px; }
+    .dots button { width: 26px; height: 26px; font-size: .72rem; }
+    .label { display: none; }
   }
 </style>
 </head>
 <body>
+<script>document.documentElement.classList.add("js");</script>
 
 <header>
-  <div class="wrap">
-    <div class="logos">
-      <img class="logo" src="{{LOGO}}" alt="WindTre Business">
-      <span class="x">×</span>
-      <img class="logo ck" src="{{LOGO_CK}}" alt="CKDelta">
+  <div class="wrap head">
+    <div>
+      <div class="eyebrow">Guida rapida · Google Earth</div>
+      <h1>Disegnare un poligono ed <em>esportarlo in KML</em></h1>
     </div>
-    <div class="eyebrow">Guida rapida · Google Earth</div>
-    <h1>Disegnare un poligono ed <em>esportarlo in KML</em></h1>
-    <p>Sette passaggi in Google Earth. Nell'esempio il poligono contorna il centro di La Spezia.</p>
+    <div class="logos">
+      <img class="logo" src="{{IMG:assets/logo-w3-business.png}}" alt="WindTre Business">
+      <span class="x">×</span>
+      <img class="logo ck" src="{{IMG:assets/logo-ckdelta.png}}" alt="CKDelta">
+    </div>
   </div>
 </header>
 
 <main class="wrap">
-  <ol class="steps">
+  <div id="slides">
 
-    <li class="step">
-      <div class="step-text">
-        <div class="n">1</div>
-        <div>
-          <h2>Avvia Google Earth</h2>
-          <p>Vai su <code>earth.google.com</code> e clicca <span class="ui">Avvia Earth</span>.</p>
-        </div>
-      </div>
-      {{VIDEO:passo-1|Clic su Avvia Earth}}
-    </li>
+    <section class="slide" data-step="1">
+      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/1-avvio.jpg}}" alt="Home page di Google Earth con il pulsante Avvia Earth"></div></div>
+      <div class="info"><div class="n">1</div><div>
+        <div class="count">Passo 1 di 7</div>
+        <h2>Avvia Google Earth</h2>
+        <p>Vai su <code>earth.google.com</code> e clicca <span class="ui">Avvia Earth</span> in alto a destra.</p>
+      </div></div>
+    </section>
 
-    <li class="step">
-      <div class="step-text">
-        <div class="n">2</div>
-        <div>
-          <h2>Crea un nuovo progetto</h2>
-          <p>Nella pagina <span class="ui">Progetti di mappe</span> clicca <span class="ui">+ Nuovo</span> in alto a sinistra.</p>
-        </div>
-      </div>
-      {{VIDEO:passo-2|Clic su Nuovo}}
-    </li>
+    <section class="slide" data-step="2">
+      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/2-progetti.jpg}}" alt="Pagina Progetti di mappe con il pulsante Nuovo"></div></div>
+      <div class="info"><div class="n">2</div><div>
+        <div class="count">Passo 2 di 7</div>
+        <h2>Crea un nuovo progetto</h2>
+        <p>Nella pagina <span class="ui">Progetti di mappe</span> clicca <span class="ui">+ Nuovo</span> in alto a sinistra.</p>
+      </div></div>
+    </section>
 
-    <li class="step">
-      <div class="step-text">
-        <div class="n">3</div>
-        <div>
-          <h2>Scegli «Nuovo progetto di mappa»</h2>
-          <p>Nel menu che si apre clicca <span class="ui">Nuovo progetto di mappa</span>. Si apre la mappa del progetto, ancora vuota.</p>
-        </div>
-      </div>
-      {{VIDEO:passo-3|Clic su Nuovo progetto di mappa}}
-    </li>
+    <section class="slide" data-step="3">
+      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/3-nuovo.jpg}}" alt="Menu Nuovo con la voce Nuovo progetto di mappa"></div></div>
+      <div class="info"><div class="n">3</div><div>
+        <div class="count">Passo 3 di 7</div>
+        <h2>Crea un nuovo progetto di mappa</h2>
+        <p>Nel menu che si apre scegli <span class="ui">Nuovo progetto di mappa</span>. Si apre una mappa vuota.</p>
+      </div></div>
+    </section>
 
-    <li class="step">
-      <div class="step-text">
-        <div class="n">4</div>
-        <div>
-          <h2>Clicca su «Aggiungi poligono»</h2>
-          <p>Nella barra in alto clicca l'icona <span class="ui">Percorso o poligono</span>.</p>
-        </div>
-      </div>
-      {{VIDEO:passo-4|Clic sull'icona Percorso o poligono}}
-    </li>
+    <section class="slide" data-step="4">
+      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/4-mappa.jpg}}" alt="Mappa del progetto con la barra degli strumenti"></div></div>
+      <div class="info"><div class="n">4</div><div>
+        <div class="count">Passo 4 di 7</div>
+        <h2>Clicca su «Aggiungi poligono»</h2>
+        <p>Spostati sulla zona da disegnare e clicca l'icona <span class="ui">Percorso o poligono</span> nella barra degli strumenti in alto.</p>
+      </div></div>
+    </section>
 
-    <li class="step">
-      <div class="step-text">
-        <div class="n">5</div>
-        <div>
-          <h2>Disegna il poligono e salvalo</h2>
-          <p>Clicca sulla mappa lungo il contorno della zona, un punto dopo l'altro. Per chiudere la forma clicca di nuovo sul primo punto, poi clicca <span class="ui">Salva nel progetto</span>.</p>
-        </div>
-      </div>
-      {{VIDEO:passo-5|Disegno del poligono e salvataggio nel progetto}}
-    </li>
+    <section class="slide" data-step="5">
+      <div class="stage"><div class="cam">
+        <img class="a" src="{{IMG:slides/4-mappa.jpg}}" alt="Disegno del poligono sulla mappa di La Spezia">
+        <img class="b" src="{{IMG:slides/5-poligono.jpg}}" alt="Poligono completato con il pulsante Salva nel progetto">
+      </div></div>
+      <div class="info"><div class="n">5</div><div>
+        <div class="count">Passo 5 di 7</div>
+        <h2>Disegna il poligono e salvalo nel progetto</h2>
+        <p>Clicca sulla mappa lungo il contorno della zona, un punto dopo l'altro. Chiudi la forma cliccando di nuovo sul primo punto, poi clicca <span class="ui">Salva nel progetto</span>.</p>
+      </div></div>
+    </section>
 
-    <li class="step">
-      <div class="step-text">
-        <div class="n">6</div>
-        <div>
-          <h2>Rinomina il poligono</h2>
-          <p>Dai al poligono il nome del luogo che rappresenta, ad esempio <code>La Spezia - centro</code>.</p>
-        </div>
-      </div>
-      {{SHOT:passo-6|Rinomina del poligono}}
-    </li>
+    <section class="slide" data-step="6">
+      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/6-file.jpg}}" alt="Titolo del progetto in alto a sinistra"></div></div>
+      <div class="info"><div class="n">6</div><div>
+        <div class="count">Passo 6 di 7</div>
+        <h2>Rinomina con il nome del luogo</h2>
+        <p>Clicca sul titolo in alto a sinistra (<span class="ui">Progetto di mappa senza titolo</span>), scrivi il nome del luogo rappresentato, ad esempio <code>La Spezia - centro</code>, e premi Invio.</p>
+      </div></div>
+    </section>
 
-    <li class="step">
-      <div class="step-text">
-        <div class="n">7</div>
-        <div>
-          <h2>Esporta come KML</h2>
-          <p>Clicca <span class="ui">File</span> e scegli <span class="ui">Esporta come KML</span>. Il file <code>.kml</code> viene salvato nella cartella Download.</p>
-        </div>
-      </div>
-      {{SHOT:passo-7|Menu File, Esporta come KML}}
-    </li>
-  </ol>
-        </div>
-      </div>
-      {{SHOT:passo-3|Disegno del poligono intorno alle mura di Lucca}}
-    </li>
+    <section class="slide" data-step="7">
+      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/6-file.jpg}}" alt="Menu File con la voce Esporta come file KML"></div></div>
+      <div class="info"><div class="n">7</div><div>
+        <div class="count">Passo 7 di 7</div>
+        <h2>Esporta come file KML</h2>
+        <p>Apri il menu <span class="ui">File</span> e scegli <span class="ui">Esporta come file KML</span> (scorciatoia <code>Ctrl+E</code>). Il file <code>.kml</code> viene salvato nella cartella Download.</p>
+      </div></div>
+    </section>
 
-    <li class="step">
-      <div class="step-text">
-        <div class="n">4</div>
-        <div>
-          <h2>Dai un nome e salva</h2>
-          <p>Nel pannello che si apre scrivi il titolo, ad esempio <code>Centro storico di Lucca</code>. Se vuoi, cambia colore e opacità. Poi clicca <span class="ui">Salva</span>.</p>
-        </div>
-      </div>
-      {{SHOT:passo-4|Pannello con titolo e stile del poligono}}
-    </li>
+  </div>
 
-    <li class="step">
-      <div class="step-text">
-        <div class="n">5</div>
-        <div>
-          <h2>Esporta in KML</h2>
-          <p>Torna in <span class="ui">Progetti</span>, clicca i tre puntini <span class="ui">⋮</span> accanto al progetto e scegli <span class="ui">Esporta come file KML</span>. Il file <code>.kml</code> viene salvato nella cartella Download.</p>
-        </div>
-      </div>
-      {{SHOT:passo-5|Menu di esportazione in file KML}}
-    </li>
-
-  </ol>
-
-  <div class="done"><strong>Fatto.</strong> Per controllare il file, in <span class="ui">+ Nuovo</span> scegli <span class="ui">Importa file nel progetto di mappa</span> e seleziona il <code>.kml</code> scaricato.</div>
+  <div class="nav" aria-label="Navigazione tra i passaggi">
+    <button class="arrow" id="prev" type="button" aria-label="Passaggio precedente">←</button>
+    <div class="dots" id="dots"></div>
+    <button class="arrow" id="next" type="button" aria-label="Passaggio successivo">→</button>
+  </div>
 </main>
 
 <footer class="wrap">WindTre Business × CKDelta · Guida rapida Google Earth</footer>
 
-<div class="lightbox" id="lightbox"><img alt=""></div>
 <script>
-  const lb = document.getElementById("lightbox");
-  document.querySelectorAll("figure img").forEach(img => img.addEventListener("click", () => {
-    lb.querySelector("img").src = img.src; lb.querySelector("img").alt = img.alt; lb.classList.add("open");
-  }));
-  lb.addEventListener("click", () => lb.classList.remove("open"));
-  document.addEventListener("keydown", e => { if (e.key === "Escape") lb.classList.remove("open"); });
+(function () {
+  "use strict";
+  var NS = "http://www.w3.org/2000/svg";
+  var W = 2000, H = 960;
+  var ORANGE = "#FF6A00", PATH = "#F2B33D";
+
+  // ---------- Utilità di animazione ----------
+  function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+  function ease(t) { return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+  function tw(t, t0, t1, a, b) { return a + (b - a) * ease(clamp01((t - t0) / (t1 - t0))); }
+  function lerp(p, q, k) { return { x: p.x + (q.x - p.x) * k, y: p.y + (q.y - p.y) * k }; }
+  function mid(r) { return { x: r.x + r.w / 2, y: r.y + r.h / 2 }; }
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  /** Punto attorno a cui zoomare perché il bersaglio sia centrato senza uscire dallo screenshot. */
+  function focusFor(p, z) {
+    function axis(c, size) {
+      var view = size / z, left = Math.min(Math.max(c - view / 2, 0), size - view);
+      return left * z / (z - 1);
+    }
+    return { x: axis(p.x, W), y: axis(p.y, H) };
+  }
+
+  // ---------- Livello di animazione (uno solo, spostato nella slide attiva) ----------
+  var svg = el("svg", { "class": "ov", viewBox: "0 0 " + W + " " + H, preserveAspectRatio: "none", "aria-hidden": "true" });
+  var defs = el("defs", {}, svg);
+  var mask = el("mask", { id: "hole" }, defs);
+  el("rect", { width: W, height: H, fill: "white" }, mask);
+  var holeRect = el("rect", { rx: 14, fill: "black" }, mask);
+  var glow = el("filter", { id: "glow", x: "-50%", y: "-50%", width: "200%", height: "200%" }, defs);
+  el("feGaussianBlur", { stdDeviation: 7, result: "b" }, glow);
+  var merge = el("feMerge", {}, glow);
+  el("feMergeNode", { "in": "b" }, merge); el("feMergeNode", { "in": "SourceGraphic" }, merge);
+
+  var polyG = el("g", {}, svg);
+  var polyFill = el("polygon", { fill: PATH, stroke: PATH, "stroke-width": 5, "stroke-linejoin": "round" }, polyG);
+  var polyLine = el("polyline", { fill: "none", stroke: PATH, "stroke-width": 5, "stroke-linejoin": "round" }, polyG);
+  var rubber = el("line", { stroke: PATH, "stroke-width": 4, "stroke-dasharray": "10 8" }, polyG);
+  var vertsG = el("g", {}, polyG);
+
+  var dim = el("rect", { width: W, height: H, fill: "black", mask: "url(#hole)" }, svg);
+  var hl = el("rect", { rx: 14, fill: "none", stroke: ORANGE, "stroke-width": 6, filter: "url(#glow)" }, svg);
+  var ripple = el("circle", { fill: "rgba(255,106,0,.18)", stroke: ORANGE, "stroke-width": 6 }, svg);
+  var cursor = el("g", {}, svg);
+  el("path", { d: "M3 1.5 L3 19.5 L8 15 L11.2 22.2 L14.4 20.8 L11.3 13.8 L18 13.6 Z", fill: "white", stroke: "black", "stroke-width": 1.3, "stroke-linejoin": "round" }, cursor);
+  cursor.style.filter = "drop-shadow(0 3px 5px rgba(0,0,0,.55))";
+
+  var label = document.createElement("div"); label.className = "label";
+  var typed = document.createElement("div"); typed.className = "typed";
+
+  /** Stato di un fotogramma: ogni slide restituisce solo i campi che usa. */
+  function blank() {
+    return { z: 1, f: { x: W / 2, y: H / 2 }, bOpacity: 0, aShift: null, spot: null, spotOp: 0,
+      ripple: null, cursor: null, press: 0, cursorOp: 1, label: null, labelOp: 0, labelAbove: false,
+      poly: null, typed: null, typedOp: 0 };
+  }
+
+  var cam, imgA, imgB, stage;
+  function draw(s) {
+    cam.style.transformOrigin = (s.f.x / W * 100) + "% " + (s.f.y / H * 100) + "%";
+    cam.style.transform = "scale(" + s.z + ")";
+    if (imgB) imgB.style.opacity = s.bOpacity;
+    var shift = s.aShift || { x: 0, y: 0 };
+    imgA.style.transform = "translate(" + (shift.x / W * 100) + "%," + (shift.y / H * 100) + "%)";
+    polyG.setAttribute("transform", "translate(" + shift.x + "," + shift.y + ")");
+
+    var pad = 10, r = s.spot;
+    if (r) {
+      [holeRect, hl].forEach(function (e) {
+        e.setAttribute("x", r.x - pad); e.setAttribute("y", r.y - pad);
+        e.setAttribute("width", r.w + 2 * pad); e.setAttribute("height", r.h + 2 * pad);
+      });
+    }
+    dim.setAttribute("opacity", r ? .55 * s.spotOp : 0);
+    hl.setAttribute("opacity", r ? s.spotOp : 0);
+
+    if (s.ripple && s.ripple.k > 0 && s.ripple.k < 1) {
+      ripple.setAttribute("cx", s.ripple.x); ripple.setAttribute("cy", s.ripple.y);
+      ripple.setAttribute("r", 18 + 80 * s.ripple.k); ripple.setAttribute("opacity", 1 - s.ripple.k);
+    } else ripple.setAttribute("opacity", 0);
+
+    if (s.cursor) {
+      var sc = 2.4 * (1 - .18 * s.press);
+      cursor.setAttribute("transform", "translate(" + s.cursor.x + "," + s.cursor.y + ") scale(" + sc + ") translate(-3,-1.5)");
+      cursor.setAttribute("opacity", s.cursorOp);
+    } else cursor.setAttribute("opacity", 0);
+
+    // Poligono in costruzione (passo 5)
+    var p = s.poly;
+    polyG.setAttribute("opacity", p ? p.op : 0);
+    if (p) {
+      var pts = p.pts.map(function (q) { return q.x + "," + q.y; }).join(" ");
+      polyFill.setAttribute("points", p.closed ? pts : "");
+      polyFill.setAttribute("fill-opacity", p.fill);
+      polyLine.setAttribute("points", p.closed ? "" : pts);
+      if (p.rubber) {
+        rubber.setAttribute("x1", p.rubber[0].x); rubber.setAttribute("y1", p.rubber[0].y);
+        rubber.setAttribute("x2", p.rubber[1].x); rubber.setAttribute("y2", p.rubber[1].y);
+        rubber.setAttribute("opacity", 1);
+      } else rubber.setAttribute("opacity", 0);
+      while (vertsG.childNodes.length > p.pts.length) vertsG.removeChild(vertsG.lastChild);
+      while (vertsG.childNodes.length < p.pts.length) el("circle", { r: 9, fill: "white", stroke: PATH, "stroke-width": 4 }, vertsG);
+      p.pts.forEach(function (q, i) { vertsG.childNodes[i].setAttribute("cx", q.x); vertsG.childNodes[i].setAttribute("cy", q.y); });
+    }
+
+    // Etichetta con l'istruzione, tenuta dentro lo screenshot
+    if (s.label && s.labelOp > 0) {
+      if (label.textContent !== s.label.text) label.textContent = s.label.text;
+      var unit = stage.clientWidth / W || 1;
+      // L'etichetta è dentro l'area zoomata: si riduce un po' quando lo zoom è forte.
+      label.style.fontSize = (unit * 34 / Math.sqrt(s.z)) + "px";
+      var half = label.offsetWidth / unit / 2;
+      var x = Math.min(Math.max(s.label.x, half + 16), W - half - 16);
+      label.style.left = (x / W * 100) + "%";
+      label.style.top = (s.label.y / H * 100) + "%";
+      label.style.transform = "translate(-50%," + (s.labelAbove ? "-100%" : "0") + ") translateY(" + ((1 - s.labelOp) * 10) + "px)";
+      label.style.opacity = s.labelOp;
+    } else label.style.opacity = 0;
+
+    typed.style.opacity = s.typedOp;
+    if (s.typed !== null) typed.innerHTML = s.typed.replace(/&/g, "&amp;").replace(/</g, "&lt;") + '<span class="caret"></span>';
+  }
+
+  // ---------- Scene ----------
+  /** Uno o più clic in sequenza: zoom sul primo bersaglio, cursore, onda, riquadro ed etichetta. */
+  function clickScene(o) {
+    var clicks = o.clicks, z = o.zoom, dur = o.dur || 5600;
+    var f = focusFor(o.focus || mid(clicks[0].rect), z);
+    return { dur: dur, still: o.still || 3200, frame: function (t) {
+      var s = blank();
+      s.f = f;
+      s.z = Math.min(tw(t, 250, 1250, 1, z), tw(t, dur - 900, dur - 250, z, 1));
+      var from = o.from || { x: W * .55, y: H * .72 };
+      var prev = from, prevEnd = 650;
+      for (var i = 0; i < clicks.length; i++) {
+        var c = clicks[i], target = mid(c.rect);
+        var arrive = c.at - 100;
+        if (t >= prevEnd) s.cursor = lerp(prev, target, tw(t, prevEnd, arrive, 0, 1));
+        if (t >= c.at - 250) {
+          s.spot = c.rect;
+          s.label = { text: c.label, x: target.x, y: c.above ? c.rect.y - 14 : c.rect.y + c.rect.h + 18 };
+          s.labelAbove = !!c.above;
+        }
+        s.press = Math.max(s.press, tw(t, c.at - 60, c.at, 0, 1) * (1 - tw(t, c.at + 60, c.at + 160, 0, 1)));
+        if (t >= c.at && t < c.at + 700) s.ripple = { x: target.x, y: target.y, k: (t - c.at) / 600 };
+        prev = target; prevEnd = c.at + 350;
+      }
+      if (!s.cursor) s.cursor = from;
+      var out = tw(t, dur - 900, dur - 500, 1, 0);
+      s.spotOp = Math.min(tw(t, clicks[0].at + 100, clicks[0].at + 400, 0, 1), out);
+      s.labelOp = s.spotOp;
+      s.cursorOp = Math.min(tw(t, 200, 600, 0, 1), out);
+      if (o.extra) o.extra(t, s);
+      return s;
+    } };
+  }
+
+  // Vertici del poligono letti dallo screenshot del poligono completato (5-poligono);
+  // nella mappa vuota (4-mappa) la mappa è spostata di (+186, +6) px.
+  var POLY_RESULT = [[1114,280],[1233,364],[1316,360],[1254,644],[1185,548],[1031,566],[1017,588],[1069,633],
+    [1021,691],[957,650],[843,566],[803,594],[756,519],[826,444],[924,459],[970,441],[1005,405],[1042,316]]
+    .map(function (p) { return { x: p[0], y: p[1] }; });
+  var SHIFT = { x: 186, y: 6 };
+  var POLY = POLY_RESULT.map(function (p) { return { x: p.x + SHIFT.x, y: p.y + SHIFT.y }; });
+  var SAVE = { x: 1656, y: 602, w: 168, h: 39 };
+
+  function drawScene() {
+    var PER = 300, START = 1400, N = POLY.length;
+    var CLOSE = START + N * PER, OUT = CLOSE + 1200, SAVE_AT = OUT + 2100, DUR = SAVE_AT + 2900;
+    var center = { x: 1220, y: 490 }, z = 1.5;
+    var f = focusFor(center, z);
+    var ring = POLY.concat([POLY[0]]);
+    return { dur: DUR, still: SAVE_AT + 1200, frame: function (t) {
+      var s = blank();
+      s.f = f;
+      s.z = Math.min(tw(t, 0, 1000, 1, z), tw(t, OUT, OUT + 800, z, 1));
+      var slide = tw(t, OUT + 200, OUT + 800, 0, 1);
+      s.aShift = { x: -SHIFT.x * slide, y: -SHIFT.y * slide };
+      s.bOpacity = tw(t, OUT + 800, OUT + 1100, 0, 1);
+
+      // Cursore che clicca un vertice dopo l'altro e chiude sul primo.
+      var placed = 0, cur;
+      if (t < START) { cur = lerp({ x: 1550, y: 800 }, ring[0], tw(t, 500, START - 100, 0, 1)); }
+      else if (t >= CLOSE) { cur = ring[N]; placed = N; }
+      else {
+        var i = Math.floor((t - START) / PER), local = ((t - START) % PER) / PER;
+        cur = lerp(ring[i], ring[i + 1], tw(local, .25, 1, 0, 1));
+        placed = i + 1;
+        s.press = local < .2 ? 1 : 0;
+        s.ripple = { x: ring[i].x, y: ring[i].y, k: local / .9 };
+      }
+      var closed = t >= CLOSE;
+      if (closed && t < CLOSE + 700) s.ripple = { x: ring[0].x, y: ring[0].y, k: (t - CLOSE) / 600 };
+      if (closed && t < CLOSE + 150) s.press = 1;
+      s.poly = { pts: POLY.slice(0, placed), closed: closed, fill: tw(t, CLOSE, CLOSE + 400, 0, .28),
+        rubber: !closed && placed > 0 ? [POLY[placed - 1], cur] : null, op: 1 - s.bOpacity };
+
+      if (t < OUT) { s.cursor = cur; s.cursorOp = tw(t, 300, 700, 0, 1); }
+      else {
+        var sv = mid(SAVE);
+        s.cursor = lerp(POLY_RESULT[0], sv, tw(t, OUT + 1100, SAVE_AT - 100, 0, 1));
+        s.cursorOp = Math.min(tw(t, OUT, OUT + 200, 1, 0) + tw(t, OUT + 1000, OUT + 1200, 0, 1), tw(t, DUR - 900, DUR - 500, 1, 0));
+        s.press = tw(t, SAVE_AT - 60, SAVE_AT, 0, 1) * (1 - tw(t, SAVE_AT + 60, SAVE_AT + 160, 0, 1));
+        if (t >= SAVE_AT && t < SAVE_AT + 700) s.ripple = { x: sv.x, y: sv.y, k: (t - SAVE_AT) / 600 };
+        s.spot = SAVE;
+        s.spotOp = Math.min(tw(t, SAVE_AT + 100, SAVE_AT + 400, 0, 1), tw(t, DUR - 900, DUR - 500, 1, 0));
+      }
+
+      if (t < CLOSE) { s.label = { text: "Clicca sulla mappa un punto dopo l'altro", x: 1000, y: 40 }; s.labelOp = Math.min(tw(t, 900, 1300, 0, 1), tw(t, CLOSE - 250, CLOSE, 1, 0)); }
+      else if (t < OUT) { s.label = { text: "Chiudi cliccando sul primo punto", x: 1000, y: 40 }; s.labelOp = Math.min(tw(t, CLOSE, CLOSE + 250, 0, 1), tw(t, OUT - 250, OUT, 1, 0)); }
+      else if (t >= SAVE_AT) { s.label = { text: "Clicca «Salva nel progetto»", x: mid(SAVE).x, y: SAVE.y + SAVE.h + 18 }; s.labelOp = s.spotOp; }
+      return s;
+    } };
+  }
+
+  var NAME = "La Spezia - centro";
+  var TITLE = { x: 52, y: 2, w: 304, h: 30 };
+  var SCENES = {
+    1: clickScene({ zoom: 1.9, clicks: [{ rect: { x: 1794, y: 5, w: 136, h: 45 }, at: 2100, label: "Clicca «Avvia Earth»" }] }),
+    2: clickScene({ zoom: 2.1, clicks: [{ rect: { x: 12, y: 68, w: 108, h: 54 }, at: 2100, label: "Clicca «+ Nuovo»" }] }),
+    3: clickScene({ zoom: 2, clicks: [{ rect: { x: 12, y: 141, w: 320, h: 29 }, at: 2100, label: "Scegli «Nuovo progetto di mappa»" }] }),
+    4: clickScene({ zoom: 2.3, clicks: [{ rect: { x: 546, y: 4, w: 42, h: 38 }, at: 2100, label: "Clicca l'icona «Percorso o poligono»" }] }),
+    5: drawScene(),
+    6: clickScene({
+      zoom: 2.4, dur: 7400, still: 5600,
+      clicks: [{ rect: TITLE, at: 2100, label: "Clicca il titolo e scrivi il nome del luogo" }],
+      extra: function (t, s) {
+        // Dopo il clic il titolo viene sostituito, lettera per lettera, dal nome del luogo.
+        var n = Math.round(tw(t, 2700, 4700, 0, NAME.length) );
+        s.typed = NAME.slice(0, Math.max(0, Math.min(NAME.length, n)));
+        s.typedOp = t > 2500 && t < 6500 ? 1 : 0;
+        if (t > 2500) s.cursorOp = Math.min(s.cursorOp, tw(t, 2500, 2800, 1, 0));
+      }
+    }),
+    7: clickScene({
+      zoom: 1.9, dur: 7000, still: 5000, focus: { x: 220, y: 200 },
+      clicks: [
+        { rect: { x: 47, y: 37, w: 46, h: 28 }, at: 2100, label: "1 · Clicca «File»" },
+        { rect: { x: 47, y: 326, w: 359, h: 31 }, at: 3900, label: "2 · Scegli «Esporta come file KML»" }
+      ]
+    })
+  };
+
+  // ---------- Slide e navigazione ----------
+  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  var dots = document.getElementById("dots");
+  var prevBtn = document.getElementById("prev"), nextBtn = document.getElementById("next");
+  var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var idx = 0, scene = null, t0 = 0;
+
+  slides.forEach(function (sl, i) {
+    var b = document.createElement("button");
+    b.type = "button"; b.textContent = i + 1; b.setAttribute("aria-label", "Vai al passo " + (i + 1));
+    b.addEventListener("click", function () { go(i); });
+    dots.appendChild(b);
+  });
+
+  function setScale() { if (stage) stage.style.setProperty("--k", stage.clientWidth / W); }
+
+  function go(i) {
+    idx = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach(function (sl, j) { sl.classList.toggle("active", j === idx); });
+    Array.prototype.forEach.call(dots.children, function (b, j) { b.setAttribute("aria-current", j === idx ? "true" : "false"); });
+    prevBtn.disabled = idx === 0;
+    nextBtn.disabled = idx === slides.length - 1;
+
+    var sl = slides[idx];
+    stage = sl.querySelector(".stage");
+    cam = sl.querySelector(".cam");
+    imgA = cam.querySelector("img.a");
+    imgB = cam.querySelector("img.b");
+    cam.appendChild(svg); cam.appendChild(label); cam.appendChild(typed);
+    setScale();
+    scene = SCENES[sl.getAttribute("data-step")];
+    t0 = performance.now();
+    if (reduce) draw(scene.frame(scene.still));
+  }
+
+  function loop(now) {
+    if (scene && !reduce) draw(scene.frame((now - t0) % scene.dur));
+    requestAnimationFrame(loop);
+  }
+
+  prevBtn.addEventListener("click", function () { go(idx - 1); });
+  nextBtn.addEventListener("click", function () { go(idx + 1); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowRight") go(idx + 1);
+    if (e.key === "ArrowLeft") go(idx - 1);
+  });
+  var sx = null;
+  document.getElementById("slides").addEventListener("touchstart", function (e) { sx = e.touches[0].clientX; }, { passive: true });
+  document.getElementById("slides").addEventListener("touchend", function (e) {
+    if (sx === null) return;
+    var dx = e.changedTouches[0].clientX - sx; sx = null;
+    if (Math.abs(dx) > 40) go(idx + (dx < 0 ? 1 : -1));
+  });
+  window.addEventListener("resize", setScale);
+
+  go(0);
+  requestAnimationFrame(loop);
+})();
 </script>
 </body>
 </html>
