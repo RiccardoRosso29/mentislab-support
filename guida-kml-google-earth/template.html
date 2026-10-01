@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poligono KML · WindTre Business</title>
+<meta name="description" content="Come disegnare un poligono in Google Earth ed esportarlo in formato KML.">
+<style>
+  @font-face { font-family: "Montserrat"; font-weight: 400 600; src: url("{{FONT600}}") format("woff2"); }
+  @font-face { font-family: "Montserrat"; font-weight: 700 800; src: url("{{FONT800}}") format("woff2"); }
+
+  :root {
+    --brand: #FF6A00;
+    --brand-text: #C24E00;
+    --brand-soft: #FFE6D4;
+    --dark: #0B0B0D;
+    --bg: #f4f4f4;
+    --surface: #ffffff;
+    --text: #1b1b1b;
+    --muted: #5c5c62;
+    --border: #e0e0e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --brand-text: #FF8A3D; --brand-soft: #3a1f0c;
+      --bg: #0B0B0D; --surface: #17171B; --text: #ffffff; --muted: rgba(255,255,255,.68); --border: #2c2c33;
+    }
+  }
+  :root[data-theme="dark"] {
+    --brand-text: #FF8A3D; --brand-soft: #3a1f0c;
+    --bg: #0B0B0D; --surface: #17171B; --text: #ffffff; --muted: rgba(255,255,255,.68); --border: #2c2c33;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 "Montserrat", system-ui, sans-serif; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 16px; }
+
+  header { background: radial-gradient(120% 160% at 100% 0%, rgba(255,106,0,.3), rgba(255,106,0,0) 55%), var(--dark); color: #fff; padding: 22px 0 40px; }
+  .logo { height: 52px; width: auto; display: block; margin-bottom: 32px; }
+  .eyebrow { color: var(--brand); font-weight: 700; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; }
+  h1 { font-size: clamp(1.7rem, 4.5vw, 2.4rem); font-weight: 800; line-height: 1.15; margin: .3em 0 .5em; }
+  h1 em { font-style: normal; color: var(--brand); }
+  header p { color: rgba(255,255,255,.75); margin: 0; max-width: 60ch; }
+
+  .steps { list-style: none; margin: 0; padding: 32px 0 8px; display: grid; gap: 20px; }
+  .step { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .step-text { display: flex; gap: 16px; padding: 20px 20px 16px; }
+  .n { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 800; display: grid; place-items: center; }
+  .step h2 { font-size: 1.15rem; font-weight: 800; margin: 4px 0 6px; }
+  .step p, .step ol { margin: 0; color: var(--muted); }
+  .step ol { padding-left: 1.1em; }
+  .step li { margin: .2em 0; }
+  .ui { color: var(--text); font-weight: 700; background: var(--brand-soft); padding: 0 6px; border-radius: 4px; white-space: nowrap; }
+  code { background: var(--brand-soft); color: var(--text); padding: 0 6px; border-radius: 4px; font-size: .9em; }
+
+  figure { margin: 0; border-top: 1px solid var(--border); background: #000; }
+  figure img { display: block; width: 100%; height: auto; cursor: zoom-in; }
+  .shot-missing { aspect-ratio: 16 / 9; display: grid; place-items: center; text-align: center; padding: 20px;
+    background: repeating-linear-gradient(45deg, var(--bg), var(--bg) 12px, var(--surface) 12px, var(--surface) 24px);
+    color: var(--muted); font-size: .9rem; }
+  .shot-missing b { color: var(--brand-text); display: block; font-size: 1rem; }
+
+  .done { margin: 12px 0 0; padding: 16px 20px; border-radius: 14px; background: var(--brand-soft); }
+  footer { color: var(--muted); font-size: .82rem; padding: 28px 0 40px; }
+
+  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.88); display: none; place-items: center; padding: 16px; z-index: 10; cursor: zoom-out; }
+  .lightbox.open { display: grid; }
+  .lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+
+  @media (max-width: 520px) {
+    .logo { height: 40px; margin-bottom: 24px; }
+    .step-text { padding: 16px; gap: 12px; }
+    .n { width: 30px; height: 30px; font-size: .9rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <img class="logo" src="{{LOGO}}" alt="WindTre Business">
+    <div class="eyebrow">Guida rapida · Google Earth</div>
+    <h1>Disegnare un poligono ed <em>esportarlo in KML</em></h1>
+    <p>Cinque passaggi in Google Earth Web. L'esempio contorna il centro storico di Lucca seguendo le mura.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <ol class="steps">
+
+    <li class="step">
+      <div class="step-text">
+        <div class="n">1</div>
+        <div>
+          <h2>Apri Google Earth e cerca la città</h2>
+          <p>Vai su <code>earth.google.com/web</code>, clicca sulla lente <span class="ui">Cerca</span>, scrivi <code>Lucca</code> e premi Invio. Zooma finché vedi tutto l'anello delle mura.</p>
+        </div>
+      </div>
+      {{SHOT:passo-1|Ricerca di Lucca in Google Earth}}
+    </li>
+
+    <li class="step">
+      <div class="step-text">
+        <div class="n">2</div>
+        <div>
+          <h2>Crea un nuovo progetto</h2>
+          <p>Nel menu a sinistra apri <span class="ui">Progetti</span>, clicca <span class="ui">Nuovo progetto</span> e scegli <span class="ui">Crea file KML</span>.</p>
+        </div>
+      </div>
+      {{SHOT:passo-2|Creazione di un nuovo progetto KML}}
+    </li>
+
+    <li class="step">
+      <div class="step-text">
+        <div class="n">3</div>
+        <div>
+          <h2>Disegna il poligono</h2>
+          <ol>
+            <li>Clicca <span class="ui">Aggiungi</span> e poi <span class="ui">Disegna linea o forma</span>.</li>
+            <li>Clicca sulla mappa lungo il perimetro delle mura, un punto dopo l'altro.</li>
+            <li>Per chiudere la forma, clicca di nuovo sul primo punto.</li>
+          </ol>
+        </div>
+      </div>
+      {{SHOT:passo-3|Disegno del poligono intorno alle mura di Lucca}}
+    </li>
+
+    <li class="step">
+      <div class="step-text">
+        <div class="n">4</div>
+        <div>
+          <h2>Dai un nome e salva</h2>
+          <p>Nel pannello che si apre scrivi il titolo, ad esempio <code>Centro storico di Lucca</code>. Se vuoi, cambia colore e opacità. Poi clicca <span class="ui">Salva</span>.</p>
+        </div>
+      </div>
+      {{SHOT:passo-4|Pannello con titolo e stile del poligono}}
+    </li>
+
+    <li class="step">
+      <div class="step-text">
+        <div class="n">5</div>
+        <div>
+          <h2>Esporta in KML</h2>
+          <p>Torna in <span class="ui">Progetti</span>, clicca i tre puntini <span class="ui">⋮</span> accanto al progetto e scegli <span class="ui">Esporta come file KML</span>. Il file <code>.kml</code> viene salvato nella cartella Download.</p>
+        </div>
+      </div>
+      {{SHOT:passo-5|Menu di esportazione in file KML}}
+    </li>
+
+  </ol>
+
+  <div class="done"><strong>Fatto.</strong> Per controllare il risultato, riapri il file da <span class="ui">Progetti</span> → <span class="ui">Apri</span> → <span class="ui">Importa file KML dal computer</span>.</div>
+</main>
+
+<footer class="wrap">WindTre Business · Guida rapida Google Earth</footer>
+
+<div class="lightbox" id="lightbox"><img alt=""></div>
+<script>
+  const lb = document.getElementById("lightbox");
+  document.querySelectorAll("figure img").forEach(img => img.addEventListener("click", () => {
+    lb.querySelector("img").src = img.src; lb.querySelector("img").alt = img.alt; lb.classList.add("open");
+  }));
+  lb.addEventListener("click", () => lb.classList.remove("open"));
+  document.addEventListener("keydown", e => { if (e.key === "Escape") lb.classList.remove("open"); });
+</script>
+</body>
+</html>
