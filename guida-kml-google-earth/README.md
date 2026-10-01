@@ -5,7 +5,7 @@ poligono in Google Earth ed esportarlo in KML. Si scorre con le frecce (anche da
 tastiera o con uno swipe). Su ogni screenshot reale un'animazione mostra dove cliccare:
 zoom sul pulsante, cursore, clic, riquadro arancione ed etichetta con l'istruzione.
 
-`index.html` è un file unico e autonomo (circa 1,6 MB): screenshot, loghi e font sono
+`index.html` è un file unico e autonomo (circa 1 MB): screenshot, loghi e font sono
 incorporati e le animazioni sono disegnate dalla pagina stessa, senza video.
 
 ## Struttura

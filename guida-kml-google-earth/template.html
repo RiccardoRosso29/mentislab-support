@@ -50,7 +50,9 @@
   /* Slide */
   .slide { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 20px; }
   .stage { position: relative; aspect-ratio: 2000 / 960; overflow: hidden; background: #111; }
-  .cam { position: absolute; inset: 0; will-change: transform; }
+  /* Lo zoom cambia le dimensioni del riquadro (non una trasformazione CSS),
+     così il browser ridisegna lo screenshot alla risoluzione piena invece di ingrandire una copia sgranata. */
+  .cam { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
   .cam img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .cam img.b { opacity: 0; }
   .ov { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
@@ -127,7 +129,7 @@
   <div id="slides">
 
     <section class="slide" data-step="1">
-      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/1-avvio.jpg}}" alt="Home page di Google Earth con il pulsante Avvia Earth"></div></div>
+      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/1-avvio.webp}}" alt="Home page di Google Earth con il pulsante Avvia Earth"></div></div>
       <div class="info"><div class="n">1</div><div>
         <div class="count">Passo 1 di 7</div>
         <h2>Avvia Google Earth</h2>
@@ -136,7 +138,7 @@
     </section>
 
     <section class="slide" data-step="2">
-      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/2-progetti.jpg}}" alt="Pagina Progetti di mappe con il pulsante Nuovo"></div></div>
+      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/2-progetti.webp}}" alt="Pagina Progetti di mappe con il pulsante Nuovo"></div></div>
       <div class="info"><div class="n">2</div><div>
         <div class="count">Passo 2 di 7</div>
         <h2>Crea un nuovo progetto</h2>
@@ -145,7 +147,7 @@
     </section>
 
     <section class="slide" data-step="3">
-      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/3-nuovo.jpg}}" alt="Menu Nuovo con la voce Nuovo progetto di mappa"></div></div>
+      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/3-nuovo.webp}}" alt="Menu Nuovo con la voce Nuovo progetto di mappa"></div></div>
       <div class="info"><div class="n">3</div><div>
         <div class="count">Passo 3 di 7</div>
         <h2>Crea un nuovo progetto di mappa</h2>
@@ -154,7 +156,7 @@
     </section>
 
     <section class="slide" data-step="4">
-      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/4-mappa.jpg}}" alt="Mappa del progetto con la barra degli strumenti"></div></div>
+      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/4-mappa.webp}}" alt="Mappa del progetto con la barra degli strumenti"></div></div>
       <div class="info"><div class="n">4</div><div>
         <div class="count">Passo 4 di 7</div>
         <h2>Clicca su «Aggiungi poligono»</h2>
@@ -164,8 +166,8 @@
 
     <section class="slide" data-step="5">
       <div class="stage"><div class="cam">
-        <img class="a" src="{{IMG:slides/4-mappa.jpg}}" alt="Disegno del poligono sulla mappa di La Spezia">
-        <img class="b" src="{{IMG:slides/5-poligono.jpg}}" alt="Poligono completato con il pulsante Salva nel progetto">
+        <img class="a" src="{{IMG:slides/4-mappa.webp}}" alt="Disegno del poligono sulla mappa di La Spezia">
+        <img class="b" src="{{IMG:slides/5-poligono.webp}}" alt="Poligono completato con il pulsante Salva nel progetto">
       </div></div>
       <div class="info"><div class="n">5</div><div>
         <div class="count">Passo 5 di 7</div>
@@ -175,7 +177,7 @@
     </section>
 
     <section class="slide" data-step="6">
-      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/6-file.jpg}}" alt="Titolo del progetto in alto a sinistra"></div></div>
+      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/6-file.webp}}" alt="Titolo del progetto in alto a sinistra"></div></div>
       <div class="info"><div class="n">6</div><div>
         <div class="count">Passo 6 di 7</div>
         <h2>Rinomina con il nome del luogo</h2>
@@ -184,7 +186,7 @@
     </section>
 
     <section class="slide" data-step="7">
-      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/6-file.jpg}}" alt="Menu File con la voce Esporta come file KML"></div></div>
+      <div class="stage"><div class="cam"><img class="a" src="{{IMG:slides/6-file.webp}}" alt="Menu File con la voce Esporta come file KML"></div></div>
       <div class="info"><div class="n">7</div><div>
         <div class="count">Passo 7 di 7</div>
         <h2>Esporta come file KML</h2>
@@ -267,8 +269,12 @@
 
   var cam, imgA, imgB, stage;
   function draw(s) {
-    cam.style.transformOrigin = (s.f.x / W * 100) + "% " + (s.f.y / H * 100) + "%";
-    cam.style.transform = "scale(" + s.z + ")";
+    // Equivale a scale(z) attorno al punto f, ma ridisegna l'immagine a piena risoluzione.
+    cam.style.left = (s.f.x / W * 100 * (1 - s.z)) + "%";
+    cam.style.top = (s.f.y / H * 100 * (1 - s.z)) + "%";
+    cam.style.width = (s.z * 100) + "%";
+    cam.style.height = (s.z * 100) + "%";
+    cam.style.setProperty("--k", (stage.clientWidth || W) * s.z / W);
     if (imgB) imgB.style.opacity = s.bOpacity;
     var shift = s.aShift || { x: 0, y: 0 };
     imgA.style.transform = "translate(" + (shift.x / W * 100) + "%," + (shift.y / H * 100) + "%)";
@@ -316,8 +322,8 @@
     // Etichetta con l'istruzione, tenuta dentro lo screenshot
     if (s.label && s.labelOp > 0) {
       if (label.textContent !== s.label.text) label.textContent = s.label.text;
-      var unit = stage.clientWidth / W || 1;
-      // L'etichetta è dentro l'area zoomata: si riduce un po' quando lo zoom è forte.
+      var unit = (stage.clientWidth || W) * s.z / W;
+      // L'etichetta cresce con lo zoom, ma meno dello screenshot.
       label.style.fontSize = (unit * 34 / Math.sqrt(s.z)) + "px";
       var half = label.offsetWidth / unit / 2;
       var x = Math.min(Math.max(s.label.x, half + 16), W - half - 16);
@@ -377,7 +383,7 @@
   function drawScene() {
     var PER = 300, START = 1400, N = POLY.length;
     var CLOSE = START + N * PER, OUT = CLOSE + 1200, SAVE_AT = OUT + 2100, DUR = SAVE_AT + 2900;
-    var center = { x: 1220, y: 490 }, z = 1.5;
+    var center = { x: 1220, y: 490 }, z = 1.3;
     var f = focusFor(center, z);
     var ring = POLY.concat([POLY[0]]);
     return { dur: DUR, still: SAVE_AT + 1200, frame: function (t) {
@@ -426,13 +432,13 @@
   var NAME = "La Spezia - centro";
   var TITLE = { x: 52, y: 2, w: 304, h: 30 };
   var SCENES = {
-    1: clickScene({ zoom: 1.9, clicks: [{ rect: { x: 1794, y: 5, w: 136, h: 45 }, at: 2100, label: "Clicca «Avvia Earth»" }] }),
-    2: clickScene({ zoom: 2.1, clicks: [{ rect: { x: 12, y: 68, w: 108, h: 54 }, at: 2100, label: "Clicca «+ Nuovo»" }] }),
-    3: clickScene({ zoom: 2, clicks: [{ rect: { x: 12, y: 141, w: 320, h: 29 }, at: 2100, label: "Scegli «Nuovo progetto di mappa»" }] }),
-    4: clickScene({ zoom: 2.3, clicks: [{ rect: { x: 546, y: 4, w: 42, h: 38 }, at: 2100, label: "Clicca l'icona «Percorso o poligono»" }] }),
+    1: clickScene({ zoom: 1.5, clicks: [{ rect: { x: 1794, y: 5, w: 136, h: 45 }, at: 2100, label: "Clicca «Avvia Earth»" }] }),
+    2: clickScene({ zoom: 1.6, clicks: [{ rect: { x: 12, y: 68, w: 108, h: 54 }, at: 2100, label: "Clicca «+ Nuovo»" }] }),
+    3: clickScene({ zoom: 1.6, clicks: [{ rect: { x: 12, y: 141, w: 320, h: 29 }, at: 2100, label: "Scegli «Nuovo progetto di mappa»" }] }),
+    4: clickScene({ zoom: 1.6, clicks: [{ rect: { x: 546, y: 4, w: 42, h: 38 }, at: 2100, label: "Clicca l'icona «Percorso o poligono»" }] }),
     5: drawScene(),
     6: clickScene({
-      zoom: 2.4, dur: 7400, still: 5600,
+      zoom: 1.7, dur: 7400, still: 5600,
       clicks: [{ rect: TITLE, at: 2100, label: "Clicca il titolo e scrivi il nome del luogo" }],
       extra: function (t, s) {
         // Dopo il clic il titolo viene sostituito, lettera per lettera, dal nome del luogo.
@@ -443,7 +449,7 @@
       }
     }),
     7: clickScene({
-      zoom: 1.9, dur: 7000, still: 5000, focus: { x: 220, y: 200 },
+      zoom: 1.5, dur: 7000, still: 5000, focus: { x: 220, y: 200 },
       clicks: [
         { rect: { x: 47, y: 37, w: 46, h: 28 }, at: 2100, label: "1 · Clicca «File»" },
         { rect: { x: 47, y: 326, w: 359, h: 31 }, at: 3900, label: "2 · Scegli «Esporta come file KML»" }
@@ -504,7 +510,7 @@
     var dx = e.changedTouches[0].clientX - sx; sx = null;
     if (Math.abs(dx) > 40) go(idx + (dx < 0 ? 1 : -1));
   });
-  window.addEventListener("resize", setScale);
+  window.addEventListener("resize", function () { setScale(); if (reduce && scene) draw(scene.frame(scene.still)); });
 
   go(0);
   requestAnimationFrame(loop);
