@@ -36,7 +36,10 @@
   .wrap { max-width: 880px; margin: 0 auto; padding: 0 16px; }
 
   header { background: radial-gradient(120% 160% at 100% 0%, rgba(255,106,0,.3), rgba(255,106,0,0) 55%), var(--dark); color: #fff; padding: 22px 0 40px; }
-  .logo { height: 52px; width: auto; display: block; margin-bottom: 32px; }
+  .logos { display: flex; align-items: center; gap: 18px; margin-bottom: 32px; }
+  .logo { height: 52px; width: auto; display: block; }
+  .logo.ck { height: 58px; }
+  .x { color: rgba(255,255,255,.45); font-size: 1.4rem; font-weight: 600; }
   .eyebrow { color: var(--brand); font-weight: 700; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; }
   h1 { font-size: clamp(1.7rem, 4.5vw, 2.4rem); font-weight: 800; line-height: 1.15; margin: .3em 0 .5em; }
   h1 em { font-style: normal; color: var(--brand); }
@@ -54,7 +57,8 @@
   code { background: var(--brand-soft); color: var(--text); padding: 0 6px; border-radius: 4px; font-size: .9em; }
 
   figure { margin: 0; border-top: 1px solid var(--border); background: #000; }
-  figure img { display: block; width: 100%; height: auto; cursor: zoom-in; }
+  figure img, figure video { display: block; width: 100%; height: auto; }
+  figure img { cursor: zoom-in; }
   .shot-missing { aspect-ratio: 16 / 9; display: grid; place-items: center; text-align: center; padding: 20px;
     background: repeating-linear-gradient(45deg, var(--bg), var(--bg) 12px, var(--surface) 12px, var(--surface) 24px);
     color: var(--muted); font-size: .9rem; }
@@ -68,7 +72,9 @@
   .lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; }
 
   @media (max-width: 520px) {
-    .logo { height: 40px; margin-bottom: 24px; }
+    .logos { margin-bottom: 24px; gap: 12px; }
+    .logo { height: 38px; }
+    .logo.ck { height: 42px; }
     .step-text { padding: 16px; gap: 12px; }
     .n { width: 30px; height: 30px; font-size: .9rem; }
   }
@@ -78,10 +84,14 @@
 
 <header>
   <div class="wrap">
-    <img class="logo" src="{{LOGO}}" alt="WindTre Business">
+    <div class="logos">
+      <img class="logo" src="{{LOGO}}" alt="WindTre Business">
+      <span class="x">×</span>
+      <img class="logo ck" src="{{LOGO_CK}}" alt="CKDelta">
+    </div>
     <div class="eyebrow">Guida rapida · Google Earth</div>
     <h1>Disegnare un poligono ed <em>esportarlo in KML</em></h1>
-    <p>Cinque passaggi in Google Earth Web. L'esempio contorna il centro storico di Lucca seguendo le mura.</p>
+    <p>Sette passaggi in Google Earth. Nell'esempio il poligono contorna il centro di La Spezia.</p>
   </div>
 </header>
 
@@ -92,11 +102,11 @@
       <div class="step-text">
         <div class="n">1</div>
         <div>
-          <h2>Apri Google Earth e cerca la città</h2>
-          <p>Vai su <code>earth.google.com/web</code>, clicca sulla lente <span class="ui">Cerca</span>, scrivi <code>Lucca</code> e premi Invio. Zooma finché vedi tutto l'anello delle mura.</p>
+          <h2>Avvia Google Earth</h2>
+          <p>Vai su <code>earth.google.com</code> e clicca <span class="ui">Avvia Earth</span>.</p>
         </div>
       </div>
-      {{SHOT:passo-1|Ricerca di Lucca in Google Earth}}
+      {{VIDEO:passo-1|Clic su Avvia Earth}}
     </li>
 
     <li class="step">
@@ -104,22 +114,67 @@
         <div class="n">2</div>
         <div>
           <h2>Crea un nuovo progetto</h2>
-          <p>Nel menu a sinistra apri <span class="ui">Progetti</span>, clicca <span class="ui">Nuovo progetto</span> e scegli <span class="ui">Crea file KML</span>.</p>
+          <p>Nella pagina <span class="ui">Progetti di mappe</span> clicca <span class="ui">+ Nuovo</span> in alto a sinistra.</p>
         </div>
       </div>
-      {{SHOT:passo-2|Creazione di un nuovo progetto KML}}
+      {{VIDEO:passo-2|Clic su Nuovo}}
     </li>
 
     <li class="step">
       <div class="step-text">
         <div class="n">3</div>
         <div>
-          <h2>Disegna il poligono</h2>
-          <ol>
-            <li>Clicca <span class="ui">Aggiungi</span> e poi <span class="ui">Disegna linea o forma</span>.</li>
-            <li>Clicca sulla mappa lungo il perimetro delle mura, un punto dopo l'altro.</li>
-            <li>Per chiudere la forma, clicca di nuovo sul primo punto.</li>
-          </ol>
+          <h2>Scegli «Nuovo progetto di mappa»</h2>
+          <p>Nel menu che si apre clicca <span class="ui">Nuovo progetto di mappa</span>. Si apre la mappa del progetto, ancora vuota.</p>
+        </div>
+      </div>
+      {{VIDEO:passo-3|Clic su Nuovo progetto di mappa}}
+    </li>
+
+    <li class="step">
+      <div class="step-text">
+        <div class="n">4</div>
+        <div>
+          <h2>Clicca su «Aggiungi poligono»</h2>
+          <p>Nella barra in alto clicca l'icona <span class="ui">Percorso o poligono</span>.</p>
+        </div>
+      </div>
+      {{VIDEO:passo-4|Clic sull'icona Percorso o poligono}}
+    </li>
+
+    <li class="step">
+      <div class="step-text">
+        <div class="n">5</div>
+        <div>
+          <h2>Disegna il poligono e salvalo</h2>
+          <p>Clicca sulla mappa lungo il contorno della zona, un punto dopo l'altro. Per chiudere la forma clicca di nuovo sul primo punto, poi clicca <span class="ui">Salva nel progetto</span>.</p>
+        </div>
+      </div>
+      {{VIDEO:passo-5|Disegno del poligono e salvataggio nel progetto}}
+    </li>
+
+    <li class="step">
+      <div class="step-text">
+        <div class="n">6</div>
+        <div>
+          <h2>Rinomina il poligono</h2>
+          <p>Dai al poligono il nome del luogo che rappresenta, ad esempio <code>La Spezia - centro</code>.</p>
+        </div>
+      </div>
+      {{SHOT:passo-6|Rinomina del poligono}}
+    </li>
+
+    <li class="step">
+      <div class="step-text">
+        <div class="n">7</div>
+        <div>
+          <h2>Esporta come KML</h2>
+          <p>Clicca <span class="ui">File</span> e scegli <span class="ui">Esporta come KML</span>. Il file <code>.kml</code> viene salvato nella cartella Download.</p>
+        </div>
+      </div>
+      {{SHOT:passo-7|Menu File, Esporta come KML}}
+    </li>
+  </ol>
         </div>
       </div>
       {{SHOT:passo-3|Disegno del poligono intorno alle mura di Lucca}}
@@ -149,10 +204,10 @@
 
   </ol>
 
-  <div class="done"><strong>Fatto.</strong> Per controllare il risultato, riapri il file da <span class="ui">Progetti</span> → <span class="ui">Apri</span> → <span class="ui">Importa file KML dal computer</span>.</div>
+  <div class="done"><strong>Fatto.</strong> Per controllare il file, in <span class="ui">+ Nuovo</span> scegli <span class="ui">Importa file nel progetto di mappa</span> e seleziona il <code>.kml</code> scaricato.</div>
 </main>
 
-<footer class="wrap">WindTre Business · Guida rapida Google Earth</footer>
+<footer class="wrap">WindTre Business × CKDelta · Guida rapida Google Earth</footer>
 
 <div class="lightbox" id="lightbox"><img alt=""></div>
 <script>
