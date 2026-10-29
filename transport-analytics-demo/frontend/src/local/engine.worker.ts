@@ -15,23 +15,35 @@ const DOW_LABELS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
 const N_P1 = 70
 const N_P2 = 128
 const N_P3 = 9
-const KEY = 1048576 // chiave coppia = o * KEY + d
+const KEY = 4096 // chiave coppia = indice denso origine * KEY + indice denso destinazione
 
 interface MetaFile {
   periodo: { da: string; a: string; giorni: number }
   zone: { id: number; nome: string }[]
   province: { id: number; nome: string }[]
-  indice_zone: number[]
+  ace: { id: number; nome: string }[]
+  indice_zone: number[] // id ACE in ordine di indice
+  comune_zone: number[]
   prov_zone: number[]
   scala_n: number
   overflow: { righe: number[]; n: number[] }
   [k: string]: unknown
 }
 
+type Livello = 'ace' | 'comune' | 'provincia'
+
+/** Per ogni livello: indice denso della zona di ciascuna ACE e id delle zone dense. */
+interface LevelIndex {
+  ofAce: Int32Array
+  ids: number[]
+}
+
 interface Data {
   meta: MetaFile
   zoneId: Int32Array
+  zoneComune: Int32Array
   zoneProv: Int32Array
+  levels: Record<Livello, LevelIndex>
   pzo: Uint16Array
   pzd: Uint16Array
   pStart: Uint32Array
@@ -40,7 +52,7 @@ interface Data {
   p3: Uint8Array
   n: Float32Array
   days: { iso: string; dow: number }[]
-  names: { comune: Map<number, string>; provincia: Map<number, string> }
+  names: Record<Livello, Map<number, string>>
 }
 
 let base = ''
@@ -74,7 +86,7 @@ function loadData(): Promise<Data> {
     const meta = await loadMeta()
     // estensione .bin.wasm: vedi pipeline/export_static.py
     const files = ['pairs_zo', 'pairs_zd', 'pairs_len', 'rows_p1', 'rows_p2', 'rows_p3', 'rows_nlo', 'rows_nhi']
-    const TOTAL_BYTES = 21_400_000 // dimensione indicativa del pacchetto, solo per la barra di avanzamento
+    const TOTAL_BYTES = 33_500_000 // dimensione indicativa del pacchetto, solo per la barra di avanzamento
     let loaded = 0
     const progress = (b: number) => {
       loaded += b
@@ -98,11 +110,22 @@ function loadData(): Promise<Data> {
       return { iso: d.toISOString().slice(0, 10), dow: ((d.getUTCDay() + 6) % 7) + 1 }
     })
 
+    const level = (ids: number[]): LevelIndex => {
+      const dense = new Map<number, number>()
+      const ofAce = Int32Array.from(ids, (id) => {
+        if (!dense.has(id)) dense.set(id, dense.size)
+        return dense.get(id)!
+      })
+      return { ofAce, ids: [...dense.keys()] }
+    }
+
     postMessage({ type: 'progress', value: 1 })
     return {
       meta,
       zoneId: Int32Array.from(meta.indice_zone),
+      zoneComune: Int32Array.from(meta.comune_zone),
       zoneProv: Int32Array.from(meta.prov_zone),
+      levels: { ace: level(meta.indice_zone), comune: level(meta.comune_zone), provincia: level(meta.prov_zone) },
       pzo: new Uint16Array(zo),
       pzd: new Uint16Array(zd),
       pStart,
@@ -112,6 +135,7 @@ function loadData(): Promise<Data> {
       n,
       days,
       names: {
+        ace: new Map(meta.ace.map((z) => [z.id, z.nome])),
         comune: new Map(meta.zone.map((z) => [z.id, z.nome])),
         provincia: new Map(meta.province.map((p) => [p.id, p.nome])),
       },
@@ -124,7 +148,7 @@ function loadData(): Promise<Data> {
 class BadRequest extends Error {}
 
 interface Filters {
-  livello: 'comune' | 'provincia'
+  livello: Livello
   dow: number[]
   fascia: string[]
   tipologia: string[]
@@ -132,8 +156,8 @@ interface Filters {
   genere: string[]
   eta: string[]
   motivo: [string, string][]
-  origine: { prov: Set<number>; zone: Set<number> }
-  destinazione: { prov: Set<number>; zone: Set<number> }
+  origine: ZoneSel
+  destinazione: ZoneSel
   nodo: number | null
   link: [number, number] | null
 }
@@ -144,12 +168,19 @@ function enumList(q: URLSearchParams, k: string, allowed: string[]) {
   if (v.some((x) => !allowed.includes(x))) throw new BadRequest(`valori non validi per ${k}`)
   return v
 }
-function zones(raw: string | null) {
-  const out = { prov: new Set<number>(), zone: new Set<number>() }
+/** Token 'p:<provincia>', 'c:<comune>', 'a:<ACE>'. */
+interface ZoneSel {
+  prov: Set<number>
+  zone: Set<number>
+  ace: Set<number>
+}
+function zones(raw: string | null): ZoneSel {
+  const out: ZoneSel = { prov: new Set(), zone: new Set(), ace: new Set() }
+  const by: Record<string, Set<number>> = { p: out.prov, c: out.zone, a: out.ace }
   for (const tok of split(raw)) {
     const [kind, val] = tok.split(':')
-    if (!/^\d+$/.test(val ?? '') || (kind !== 'p' && kind !== 'c')) throw new BadRequest(`token non valido: ${tok}`)
-    ;(kind === 'p' ? out.prov : out.zone).add(Number(val))
+    if (!/^\d+$/.test(val ?? '') || !by[kind]) throw new BadRequest(`token non valido: ${tok}`)
+    by[kind].add(Number(val))
   }
   return out
 }
@@ -157,7 +188,7 @@ function zones(raw: string | null) {
 function parse(q: URLSearchParams): Filters {
   const link = split(q.get('link')).map(Number)
   return {
-    livello: q.get('livello') === 'provincia' ? 'provincia' : 'comune',
+    livello: (['ace', 'provincia'] as const).find((l) => l === q.get('livello')) ?? 'comune',
     dow: split(q.get('dow')).map(Number),
     fascia: enumList(q, 'fascia', FASCE),
     tipologia: enumList(q, 'tipologia', TIPOLOGIE),
@@ -179,7 +210,7 @@ function parse(q: URLSearchParams): Filters {
 // ------------------------------------------------------------------ calcolo
 interface Result {
   hist: Float64Array
-  pairs: Map<number, number> // coppie al livello richiesto
+  pairs: Map<number, number> // coppie al livello richiesto, chiave su indici densi (vedi pairIds)
   nDays: number
 }
 
@@ -203,20 +234,21 @@ function compute(d: Data, f: Filters): Result {
     a3[v] = +(f.motivo.length === 0 || f.motivo.some(([x, y]) => x === mo && y === md))
   }
 
-  const prov = f.livello === 'provincia'
-  const sideOk = (sel: Filters['origine'], z: number, p: number) =>
-    (sel.prov.size === 0 && sel.zone.size === 0) || sel.prov.has(p) || sel.zone.has(z)
+  const empty = (s: ZoneSel) => s.prov.size === 0 && s.zone.size === 0 && s.ace.size === 0
+  const sideOk = (sel: ZoneSel, a: number, c: number, p: number) =>
+    empty(sel) || sel.prov.has(p) || sel.zone.has(c) || sel.ace.has(a)
 
   const hist = new Float64Array(N_P1 * N_P2 * N_P3)
   const pairs = new Map<number, number>()
-  const { pzo, pzd, pStart, p1, p2, p3, n, zoneId, zoneProv } = d
+  const { pzo, pzd, pStart, p1, p2, p3, n, zoneId, zoneComune, zoneProv } = d
+  const lvl = d.levels[f.livello]
 
   for (let p = 0; p < pzo.length; p++) {
-    const zo = zoneId[pzo[p]], zd = zoneId[pzd[p]]
-    const po = zoneProv[pzo[p]], pd = zoneProv[pzd[p]]
-    if (!sideOk(f.origine, zo, po) || !sideOk(f.destinazione, zd, pd)) continue
-    const o = prov ? po : zo
-    const de = prov ? pd : zd
+    const io = pzo[p], id = pzd[p]
+    if (!sideOk(f.origine, zoneId[io], zoneComune[io], zoneProv[io])) continue
+    if (!sideOk(f.destinazione, zoneId[id], zoneComune[id], zoneProv[id])) continue
+    const ko = lvl.ofAce[io], kd = lvl.ofAce[id]
+    const o = lvl.ids[ko], de = lvl.ids[kd]
     if (f.nodo !== null && o !== f.nodo && de !== f.nodo) continue
     if (f.link && !((o === f.link[0] && de === f.link[1]) || (o === f.link[1] && de === f.link[0]))) continue
 
@@ -230,7 +262,7 @@ function compute(d: Data, f: Filters): Result {
       }
     }
     if (sum > 0) {
-      const key = o * KEY + de
+      const key = ko * KEY + kd
       pairs.set(key, (pairs.get(key) ?? 0) + sum)
     }
   }
@@ -254,9 +286,10 @@ function resultFor(d: Data, f: Filters, q: URLSearchParams): Result {
 }
 
 function topOd(d: Data, f: Filters, r: Result, limit: number) {
+  const ids = d.levels[f.livello].ids
   const names = d.names[f.livello]
   return [...r.pairs.entries()]
-    .map(([k, v]) => ({ o: Math.floor(k / KEY), d: k % KEY, n: v }))
+    .map(([k, v]) => ({ o: ids[Math.floor(k / KEY)], d: ids[k % KEY], n: v }))
     .filter((x) => x.o !== x.d)
     .sort((a, b) => b.n - a.n)
     .slice(0, limit)
@@ -305,8 +338,9 @@ function stats(d: Data, f: Filters, r: Result) {
   }
   if (f.nodo !== null) {
     let uscita = 0, ingresso = 0, interni = 0
+    const ids = d.levels[f.livello].ids
     for (const [k, v] of r.pairs) {
-      const o = Math.floor(k / KEY), de = k % KEY
+      const o = ids[Math.floor(k / KEY)], de = ids[k % KEY]
       if (o === f.nodo && de === f.nodo) interni += v
       else if (o === f.nodo) uscita += v
       else if (de === f.nodo) ingresso += v
@@ -332,7 +366,8 @@ function stats(d: Data, f: Filters, r: Result) {
   }
 }
 
-function flows(f: Filters, r: Result, limit: number) {
+function flows(d: Data, f: Filters, r: Result, limit: number) {
+  const ids = d.levels[f.livello].ids
   const nodes = new Map<number, [number, number, number]>()
   const node = (id: number) => {
     let v = nodes.get(id)
@@ -342,7 +377,7 @@ function flows(f: Filters, r: Result, limit: number) {
   const links: { o: number; d: number; n: number }[] = []
   let volume = 0
   for (const [k, v] of r.pairs) {
-    const o = Math.floor(k / KEY), de = k % KEY
+    const o = ids[Math.floor(k / KEY)], de = ids[k % KEY]
     if (o === de) {
       node(o)[2] += v
       continue
@@ -368,7 +403,7 @@ async function handle(url: string) {
   const u = new URL(url, 'http://local')
   if (u.pathname === '/api/meta') {
     const m = await loadMeta()
-    return { periodo: m.periodo, fasce: m.fasce, province: m.province, zone: m.zone }
+    return { periodo: m.periodo, fasce: m.fasce, province: m.province, zone: m.zone, ace: m.ace }
   }
   const d = await loadData()
   const f = parse(u.searchParams)
@@ -376,7 +411,7 @@ async function handle(url: string) {
   if (u.pathname === '/api/stats') return stats(d, f, r)
   if (u.pathname === '/api/flows') {
     const limit = Math.min(3000, Math.max(10, Number(u.searchParams.get('limit')) || 300))
-    return flows(f, r, limit)
+    return flows(d, f, r, limit)
   }
   throw new BadRequest(`endpoint sconosciuto: ${u.pathname}`)
 }

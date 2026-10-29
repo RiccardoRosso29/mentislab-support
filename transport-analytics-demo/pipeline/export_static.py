@@ -6,13 +6,13 @@ restituendo gli stessi JSON delle API FastAPI.
 
 Formato: file gzip con estensione .bin.wasm. L'estensione serve solo perché gli hosting statici
 (es. Artifact claude.ai) servono come binari soltanto tipi noti; il contenuto non è WebAssembly.
-  pairs_zo.bin, pairs_zd.bin   uint16  indice zona di origine / destinazione per ogni coppia OD
+  pairs_zo.bin, pairs_zd.bin   uint16  indice ACE di origine / destinazione per ogni coppia OD
   pairs_len.bin                uint32  numero di righe di ciascuna coppia (righe ordinate per coppia)
   rows_p1.bin                  uint8   giorno * 5 + fascia
   rows_p2.bin                  uint8   tipologia | nazionalita << 1 | genere << 2 | eta << 4
   rows_p3.bin                  uint8   motivo_origine * 3 + motivo_destinazione
   rows_nlo.bin, rows_nhi.bin   uint8   round(n * SCALE) su 16 bit (65535 = valore in overflow.json)
-  meta.json                    come GET /api/meta + indice delle zone e province delle zone
+  meta.json                    come GET /api/meta + indice delle ACE con comune e provincia di ciascuna
 """
 
 import gzip
@@ -45,15 +45,17 @@ def main() -> int:
     meta = wh.meta()
     con: duckdb.DuckDBPyConnection = wh.con
 
-    zone_ids = [z["id"] for z in meta["zone"]]
+    # le coppie sono al livello più fine (ACE); comune e provincia si ricavano per ciascuna ACE
+    zone_ids = [a["id"] for a in meta["ace"]]
     zone_index = {zid: i for i, zid in enumerate(zone_ids)}
     meta["indice_zone"] = zone_ids
-    meta["prov_zone"] = [z["prov_id"] for z in meta["zone"]]
+    meta["comune_zone"] = [a["comune_id"] for a in meta["ace"]]
+    meta["prov_zone"] = [a["prov_id"] for a in meta["ace"]]
     meta["giorno0"] = meta["periodo"]["da"]
     meta["scala_n"] = SCALE
 
     d = con.execute("""
-        SELECT zo, zd, (giorno - (SELECT min(giorno) FROM fact_od))::INT AS g,
+        SELECT ao AS zo, ad AS zd, (giorno - (SELECT min(giorno) FROM fact_od))::INT AS g,
                enum_code(fascia) AS f, enum_code(tipologia) AS tp, enum_code(nazionalita) AS nz,
                enum_code(genere) AS ge, enum_code(eta) AS et, enum_code(mo) AS mo, enum_code(md) AS md, n
         FROM fact_od ORDER BY zo, zd, g, f, mo, md, ge, et

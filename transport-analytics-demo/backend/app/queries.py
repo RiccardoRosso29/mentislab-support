@@ -65,12 +65,20 @@ class Warehouse:
                     WHERE id IN (SELECT zo FROM fact_od UNION SELECT zd FROM fact_od)
                     ORDER BY nome""")
             ]
+            ace = [
+                dict(id=r[0], nome=r[1], comune_id=r[2], prov_id=r[3], prov_nome=r[4], piemonte=r[5], lon=r[6], lat=r[7])
+                for r in self._q("""
+                    SELECT id, nome, comune_id, prov_id, prov_nome, piemonte, lon, lat FROM dim_ace
+                    WHERE id IN (SELECT ao FROM fact_od UNION SELECT ad FROM fact_od)
+                    ORDER BY nome""")
+            ]
             config = json.loads(self._q("SELECT v FROM meta WHERE k = 'configurazione'")[0][0])
             return dict(
                 periodo=dict(da=self.days[0].isoformat(), a=self.days[-1].isoformat(), giorni=len(self.days)),
                 fasce=[dict(id=f[2], da=f[0], a=f[1]) for f in config.get("fasce", [])],
                 province=province,
                 zone=zone,
+                ace=ace,
             )
 
         return self.cache.get_or_compute("meta", build)
@@ -150,6 +158,8 @@ class Warehouse:
         return dict(uscita=out or 0.0, ingresso=inn or 0.0, interni=intra or 0.0)
 
     def _names_cte(self, f: Filters) -> str:
+        if f.livello == "ace":
+            return "SELECT id, nome, prov_nome AS sub FROM dim_ace"
         if f.livello == "comune":
             return "SELECT id, nome, prov_nome AS sub FROM dim_zona"
         return "SELECT id, nome, regione AS sub FROM dim_provincia"

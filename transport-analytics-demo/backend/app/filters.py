@@ -5,7 +5,10 @@ from typing import Literal
 
 from fastapi import HTTPException, Query
 
-Livello = Literal["comune", "provincia"]
+Livello = Literal["ace", "comune", "provincia"]
+
+ZO = {"ace": "ao", "comune": "zo", "provincia": "po"}
+ZD = {"ace": "ad", "comune": "zd", "provincia": "pd"}
 
 FASCE = ("notte", "mattina_punta", "centrale", "sera_punta", "sera")
 TIPOLOGIE = ("interno", "di scambio")
@@ -34,15 +37,15 @@ def _ints(raw: str | None, name: str) -> list[int]:
         raise HTTPException(400, f"{name} deve essere una lista di interi")
 
 
-def _zones(raw: str | None, name: str) -> tuple[list[int], list[int]]:
-    """Token 'p:<provincia>' o 'c:<zona comunale>' -> (province, zone)."""
-    prov, zone = [], []
+def _zones(raw: str | None, name: str) -> tuple[list[int], list[int], list[int]]:
+    """Token 'p:<provincia>', 'c:<zona comunale>' o 'a:<ACE>' -> (province, comuni, ACE)."""
+    out: dict[str, list[int]] = {"p": [], "c": [], "a": []}
     for tok in _split(raw):
         kind, _, val = tok.partition(":")
-        if kind not in ("p", "c") or not val.isdigit():
+        if kind not in out or not val.isdigit():
             raise HTTPException(400, f"token non valido per {name}: {tok}")
-        (prov if kind == "p" else zone).append(int(val))
-    return prov, zone
+        out[kind].append(int(val))
+    return out["p"], out["c"], out["a"]
 
 
 @dataclass
@@ -55,18 +58,18 @@ class Filters:
     genere: list[str] = field(default_factory=list)
     eta: list[str] = field(default_factory=list)
     motivo: list[tuple[str, str]] = field(default_factory=list)
-    origine: tuple[list[int], list[int]] = ([], [])
-    destinazione: tuple[list[int], list[int]] = ([], [])
+    origine: tuple[list[int], list[int], list[int]] = ([], [], [])
+    destinazione: tuple[list[int], list[int], list[int]] = ([], [], [])
     nodo: int | None = None
     link: tuple[int, int] | None = None
 
     @property
     def zo(self) -> str:
-        return "zo" if self.livello == "comune" else "po"
+        return ZO[self.livello]
 
     @property
     def zd(self) -> str:
-        return "zd" if self.livello == "comune" else "pd"
+        return ZD[self.livello]
 
     def key(self) -> str:
         return repr(self)
@@ -90,14 +93,12 @@ class Filters:
             for mo, md in self.motivo:
                 params.extend([mo, md])
 
-        for side, (prov, zone) in (("o", self.origine), ("d", self.destinazione)):
+        for side, zones in (("o", self.origine), ("d", self.destinazione)):
             parts = []
-            if prov:
-                parts.append(f"p{side} IN ({', '.join('?' * len(prov))})")
-                params.extend(prov)
-            if zone:
-                parts.append(f"z{side} IN ({', '.join('?' * len(zone))})")
-                params.extend(zone)
+            for col, ids in zip(("p", "z", "a"), zones):
+                if ids:
+                    parts.append(f"{col}{side} IN ({', '.join('?' * len(ids))})")
+                    params.extend(ids)
             if parts:
                 clauses.append("(" + " OR ".join(parts) + ")")
 

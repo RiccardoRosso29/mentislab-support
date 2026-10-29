@@ -5,9 +5,10 @@ Livelli (medallion):
   silver fact_od in data/warehouse.duckdb       tipizzata, codifiche compatte, zone a livello comune
   gold   dim_zona, dim_provincia + geo/*.json   anagrafiche e geometrie semplificate per la mappa
 
-Zonizzazione: nei dati le zone piemontesi sono ACE (aree subcomunali per i comuni maggiori),
-quelle fuori regione sono province. Senza geometrie ACE la granularità più fine mappabile è
-il comune: le ACE vengono quindi ricondotte al comune (prime 6 cifre del codice ISTAT).
+Zonizzazione: nei dati le zone piemontesi sono ACE ISTAT (aree di censimento, subcomunali per i
+comuni maggiori), quelle fuori regione sono province. Il fact table conserva tre livelli:
+ACE (ao/ad), comune (zo/zd, prime 6 cifre del codice ACE) e provincia (po/pd).
+Id ACE = codice comune * 1000 + numero ACE; le zone fuori regione hanno lo stesso id a ogni livello.
 """
 
 import json
@@ -16,7 +17,10 @@ import sys
 import time
 from pathlib import Path
 
+import csv
+
 import duckdb
+from shapely import wkt
 from shapely.geometry import mapping, shape
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", Path(__file__).resolve().parents[1] / "data"))
@@ -79,22 +83,45 @@ def build_geo():
             "geometry": round_coords(geom.simplify(0.003 if piemonte else 0.01, preserve_topology=True), 3),
         })
 
-    for name, feats in (("comuni.geojson", comuni_feats), ("province.geojson", prov_feats)):
+    # ACE: geometrie dall'estrazione (gs://.../*_geometrie.csv, livello_geo = 'ace')
+    nomi_comuni = {c[0]: (c[1], c[2], c[3]) for c in comuni}
+    csv.field_size_limit(1 << 30)
+    ace_rows = [r for r in csv.DictReader(open(GEO_SRC_DIR / "geometrie.csv")) if r["livello_geo"] == "ace"]
+    per_comune: dict[int, int] = {}
+    for r in ace_rows:
+        cid = int(r["chiave_geo"][:6])
+        per_comune[cid] = per_comune.get(cid, 0) + 1
+    ace, ace_feats = [], []
+    for r in ace_rows:
+        cid, num = int(r["chiave_geo"][:6]), int(r["chiave_geo"][7:])
+        nome_c, prov_id, prov_nome = nomi_comuni[cid]
+        nome = f"{nome_c} · ACE {num}" if per_comune[cid] > 1 else nome_c
+        geom = wkt.loads(r["wkt"])
+        pt = anchor(geom)
+        aid = cid * 1000 + num
+        ace.append((aid, nome, cid, nome_c, prov_id, prov_nome, pt.x, pt.y))
+        ace_feats.append({
+            "type": "Feature",
+            "properties": {"id": aid, "nome": nome},
+            "geometry": round_coords(geom.simplify(0.0006, preserve_topology=True)),
+        })
+
+    for name, feats in (("comuni.geojson", comuni_feats), ("province.geojson", prov_feats), ("ace.geojson", ace_feats)):
         (GEO_OUT_DIR / name).write_text(
             json.dumps({"type": "FeatureCollection", "features": feats}, separators=(",", ":"))
         )
-    return comuni, province
+    return comuni, province, ace
 
 
 def main() -> int:
-    csvs = sorted(RAW_DIR.glob("*.csv"))
+    csvs = sorted(p for p in RAW_DIR.glob("*.csv") if not p.name.endswith("_geometrie.csv"))
     if not csvs:
         print(f"Nessun CSV in {RAW_DIR}: eseguire prima pipeline/fetch_data.py", file=sys.stderr)
         return 1
 
     t0 = time.time()
-    comuni, province = build_geo()
-    print(f"geometrie: {len(comuni)} comuni, {len(province)} province ({time.time() - t0:.1f}s)")
+    comuni, province, ace = build_geo()
+    print(f"geometrie: {len(ace)} ACE, {len(comuni)} comuni, {len(province)} province ({time.time() - t0:.1f}s)")
 
     tmp = WAREHOUSE.with_suffix(".tmp.duckdb")
     tmp.unlink(missing_ok=True)
@@ -116,6 +143,15 @@ def main() -> int:
         FROM dim_provincia WHERE NOT piemonte
     """)
 
+    con.execute("CREATE TEMP TABLE geo_ace (id INTEGER, nome VARCHAR, comune_id INTEGER, comune_nome VARCHAR, prov_id SMALLINT, prov_nome VARCHAR, lon DOUBLE, lat DOUBLE)")
+    con.executemany("INSERT INTO geo_ace VALUES (?, ?, ?, ?, ?, ?, ?, ?)", ace)
+    con.execute(f"""
+        CREATE TABLE dim_ace AS
+        SELECT id, nome, comune_id, comune_nome, prov_id, prov_nome, true AS piemonte, lon, lat FROM geo_ace
+        UNION ALL
+        SELECT id, nome, id, nome, prov_id, prov_nome, false, lon, lat FROM dim_zona WHERE NOT piemonte
+    """)
+
     con.execute("CREATE TYPE fascia_t AS ENUM ('notte', 'mattina_punta', 'centrale', 'sera_punta', 'sera')")
     con.execute("CREATE TYPE tipologia_t AS ENUM ('interno', 'di scambio')")
     con.execute("CREATE TYPE nazionalita_t AS ENUM ('nazionale', 'internazionale')")
@@ -129,6 +165,9 @@ def main() -> int:
     zona = lambda side: f"""CASE WHEN comune_{side} = 'NA'
              THEN {EXTRA_REGION_OFFSET} + {prov_extra(side)}
              ELSE CAST(substr(ACE_{side}, 1, 6) AS INTEGER) END"""
+    ace_id = lambda side: f"""CASE WHEN comune_{side} = 'NA'
+             THEN {EXTRA_REGION_OFFSET} + {prov_extra(side)}
+             ELSE CAST(substr(ACE_{side}, 1, 6) AS INTEGER) * 1000 + CAST(substr(ACE_{side}, 8) AS INTEGER) END"""
     prov = lambda side: f"""CASE WHEN comune_{side} = 'NA'
              THEN {prov_extra(side)}
              ELSE CAST(substr(ACE_{side}, 1, 3) AS SMALLINT) END"""
@@ -140,6 +179,8 @@ def main() -> int:
             giorno,
             CAST(isodow(giorno) AS TINYINT)                      AS dow,
             CAST(fascia_oraria AS fascia_t)                      AS fascia,
+            CAST({ace_id('origine')} AS INTEGER)                 AS ao,
+            CAST({ace_id('destinazione')} AS INTEGER)            AS ad,
             CAST({zona('origine')} AS INTEGER)                   AS zo,
             CAST({zona('destinazione')} AS INTEGER)              AS zd,
             {prov('origine')}                                    AS po,
@@ -155,14 +196,14 @@ def main() -> int:
                       types = {{'ACE_origine': 'VARCHAR', 'ACE_destinazione': 'VARCHAR',
                                'genere': 'VARCHAR', 'eta': 'VARCHAR'}})
         GROUP BY ALL
-        ORDER BY zo, zd, giorno
+        ORDER BY ao, ad, giorno
     """)
     rows, tot = con.execute("SELECT count(*), sum(n) FROM fact_od").fetchone()
     print(f"fact_od: {rows:,} righe, {tot:,.0f} spostamenti ({time.time() - t1:.1f}s)")
 
     missing = con.execute("""
-        SELECT count(DISTINCT z) FROM (SELECT zo AS z FROM fact_od UNION SELECT zd FROM fact_od)
-        WHERE z NOT IN (SELECT id FROM dim_zona)
+        SELECT count(DISTINCT z) FROM (SELECT ao AS z FROM fact_od UNION SELECT ad FROM fact_od)
+        WHERE z NOT IN (SELECT id FROM dim_ace)
     """).fetchone()[0]
     if missing:
         print(f"ATTENZIONE: {missing} zone senza geometria", file=sys.stderr)

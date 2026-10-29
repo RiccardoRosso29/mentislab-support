@@ -26,7 +26,7 @@ function readUrl(): UrlState {
   const nodo = q.get('nodo')
   const link = q.get('link')?.split(',').map(Number)
   return {
-    livello: q.get('livello') === 'provincia' ? 'provincia' : 'comune',
+    livello: (['ace', 'provincia'] as const).find((l) => l === q.get('livello')) ?? 'comune',
     filters,
     selection: nodo ? { type: 'nodo', id: Number(nodo) } : link?.length === 2 ? { type: 'link', a: link[0], b: link[1] } : null,
     limit: Number(q.get('limit')) || 300,
@@ -39,7 +39,7 @@ export default function App() {
   const [filters, setFilters] = useState<Filters>(initial.filters)
   const [selection, setSelection] = useState<Selection>(initial.selection)
   const [limit, setLimit] = useState(initial.limit)
-  const [geo, setGeo] = useState<{ comuni: any; province: any }>({ comuni: null, province: null })
+  const [geo, setGeo] = useState<{ ace: any; comuni: any; province: any }>({ ace: null, comuni: null, province: null })
 
   const { data: meta, error: metaError } = useApi<Meta>('/api/meta', 0)
   const [progress, setProgress] = useState<number | null>(null)
@@ -50,8 +50,8 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    Promise.all([getJSON('geo/comuni.geojson'), getJSON('geo/province.geojson')]).then(([comuni, province]) =>
-      setGeo({ comuni, province }),
+    Promise.all([getJSON('geo/ace.geojson'), getJSON('geo/comuni.geojson'), getJSON('geo/province.geojson')]).then(
+      ([ace, comuni, province]) => setGeo({ ace, comuni, province }),
     )
   }, [])
 
@@ -72,7 +72,8 @@ export default function App() {
   const nodes = useMemo(() => {
     const m = new Map<number, NodeInfo>()
     if (!meta) return m
-    if (livello === 'comune') meta.zone.forEach((z) => m.set(z.id, z))
+    if (livello === 'ace') meta.ace.forEach((z) => m.set(z.id, z))
+    else if (livello === 'comune') meta.zone.forEach((z) => m.set(z.id, z))
     else meta.province.forEach((p) => m.set(p.id, p))
     return m
   }, [meta, livello])
@@ -115,6 +116,9 @@ export default function App() {
         </div>
         <div className="seg">
           <span>Zonizzazione</span>
+          <button className={livello === 'ace' ? 'on' : ''} onClick={() => changeLivello('ace')} title="Aree di censimento ISTAT">
+            ACE ISTAT
+          </button>
           <button className={livello === 'comune' ? 'on' : ''} onClick={() => changeLivello('comune')}>
             Comuni
           </button>
@@ -140,7 +144,7 @@ export default function App() {
             livello={livello}
             flows={f}
             nodes={nodes}
-            comuni={geo.comuni}
+            aree={livello === 'ace' ? geo.ace : geo.comuni}
             province={geo.province}
             selection={selection}
             onSelect={setSelection}

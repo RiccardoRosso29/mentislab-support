@@ -23,7 +23,7 @@ interface Props {
   livello: Livello
   flows: Flows | null
   nodes: Map<number, NodeInfo>
-  comuni: FC | null
+  aree: FC | null // poligoni del livello fine attivo: ACE o comuni
   province: FC | null
   selection: Selection
   onSelect: (s: Selection) => void
@@ -66,7 +66,10 @@ interface Arc {
   width: number
 }
 
-export default function FlowMap({ livello, flows, nodes, comuni, province, selection, onSelect, extraRegionOffset }: Props) {
+export default function FlowMap({ livello, flows, nodes, aree, province, selection, onSelect, extraRegionOffset }: Props) {
+  // zoom arrotondato a 0,5: basta per distanziare le etichette senza ricalcolarle a ogni frame
+  const [zoom, setZoom] = useState(INITIAL_VIEW.zoom)
+
   const nodeTotals = useMemo(() => {
     const m = new Map<number, { uscita: number; ingresso: number; interni: number; tot: number }>()
     for (const n of flows?.nodi ?? []) m.set(n.id, { ...n, tot: n.uscita + n.ingresso + n.interni })
@@ -110,7 +113,8 @@ export default function FlowMap({ livello, flows, nodes, comuni, province, selec
   const labels = useMemo(() => {
     // le zone selezionate hanno sempre l'etichetta, le altre solo se non si sovrappongono
     const picked: typeof nodeList = nodeList.filter((n) => selKey.includes(n.info.id))
-    const minDist = livello === 'comune' ? 0.13 : 0.4
+    // distanza minima tra etichette: ~90 px sullo schermo, convertiti in gradi allo zoom corrente
+    const minDist = (90 * 360) / (256 * 2 ** zoom)
     for (const n of nodeList) {
       if (picked.length >= 16) break
       const far = picked.every((p) => Math.hypot(p.info.lon - n.info.lon, p.info.lat - n.info.lat) > minDist)
@@ -118,14 +122,14 @@ export default function FlowMap({ livello, flows, nodes, comuni, province, selec
     }
     return picked
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodeList, livello, selKey.join(',')])
+  }, [nodeList, zoom, selKey.join(',')])
 
   const selectedIds = new Set<number>(
     selection?.type === 'nodo' ? [selection.id] : selection?.type === 'link' ? [selection.a, selection.b] : [],
   )
 
-  const zoneId = (f: Feature, kind: 'comune' | 'provincia'): number => {
-    if (kind === 'comune') return f.properties.id
+  const zoneId = (f: Feature, kind: 'aree' | 'provincia'): number => {
+    if (kind === 'aree') return f.properties.id
     if (livello === 'provincia') return f.properties.id
     return f.properties.piemonte ? -1 : extraRegionOffset + f.properties.id
   }
@@ -153,10 +157,10 @@ export default function FlowMap({ livello, flows, nodes, comuni, province, selec
       },
       updateTriggers: { getFillColor: [livello, flows, selection] },
     }),
-    livello === 'comune' &&
+    livello !== 'provincia' &&
       new GeoJsonLayer({
-        id: 'comuni',
-        data: comuni ?? { type: 'FeatureCollection', features: [] },
+        id: 'aree',
+        data: aree ?? { type: 'FeatureCollection', features: [] },
         stroked: true,
         filled: true,
         pickable: true,
@@ -166,7 +170,7 @@ export default function FlowMap({ livello, flows, nodes, comuni, province, selec
         getLineWidth: 0.5,
         lineWidthUnits: 'pixels',
         getFillColor: (f: any) => fillFor(f.properties.id),
-        updateTriggers: { getFillColor: [flows, selection] },
+        updateTriggers: { getFillColor: [flows, selection, livello] },
       }),
     new PathLayer<Arc>({
       id: 'flussi',
@@ -224,7 +228,7 @@ export default function FlowMap({ livello, flows, nodes, comuni, province, selec
         back ? `\n(ritorno: ${fmt(back.n)})` : ''
       }`
     }
-    const id = layer === 'nodi' ? o.info.id : zoneId(o, layer === 'comuni' ? 'comune' : 'provincia')
+    const id = layer === 'nodi' ? o.info.id : zoneId(o, layer === 'aree' ? 'aree' : 'provincia')
     const t = nodeTotals.get(id)
     const nome = nodes.get(id)?.nome
     if (!nome || !t) return null
@@ -239,7 +243,7 @@ export default function FlowMap({ livello, flows, nodes, comuni, province, selec
       const same = selection?.type === 'link' && selectedIds.has(o.o) && selectedIds.has(o.d)
       return onSelect(same ? null : { type: 'link', a: o.o, b: o.d })
     }
-    const id = layer === 'nodi' ? o.info.id : zoneId(o, layer === 'comuni' ? 'comune' : 'provincia')
+    const id = layer === 'nodi' ? o.info.id : zoneId(o, layer === 'aree' ? 'aree' : 'provincia')
     if (id < 0 || !nodes.has(id)) return
     onSelect(selection?.type === 'nodo' && selection.id === id ? null : { type: 'nodo', id })
   }
@@ -278,6 +282,24 @@ export default function FlowMap({ livello, flows, nodes, comuni, province, selec
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkKey, nodes])
+
+  // Al livello ACE le zone sono piccole: selezionandone una la mappa si avvicina
+  const nodeKey = selection?.type === 'nodo' && livello === 'ace' ? selection.id : null
+  useEffect(() => {
+    if (nodeKey == null) return
+    const z = nodes.get(nodeKey)
+    if (!z) return
+    setViewState({
+      longitude: z.lon,
+      latitude: z.lat,
+      zoom: Math.max(zoom, 10),
+      pitch: 0,
+      bearing: 0,
+      transitionDuration: 900,
+      transitionInterpolator: new FlyToInterpolator(),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodeKey, nodes])
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const start = downAt.current
     if (!start || Math.hypot(e.clientX - start[0], e.clientY - start[1]) > 5) return
@@ -296,6 +318,10 @@ export default function FlowMap({ livello, flows, nodes, comuni, province, selec
       <DeckGL
         ref={deckRef}
         initialViewState={viewState}
+        onViewStateChange={({ viewState: vs }) => {
+          const z = Math.round((vs as MapViewState).zoom * 2) / 2
+          if (z !== zoom) setZoom(z)
+        }}
         controller={{ doubleClickZoom: false }}
         layers={layers}
         getCursor={({ isHovering }) => (isHovering ? 'pointer' : 'grab')}

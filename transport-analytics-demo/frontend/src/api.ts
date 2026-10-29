@@ -1,6 +1,6 @@
 import { isStatic, localApi } from './local/client'
 
-export type Livello = 'comune' | 'provincia'
+export type Livello = 'ace' | 'comune' | 'provincia'
 
 export interface Provincia {
   id: number
@@ -22,18 +22,30 @@ export interface Zona {
   lat: number
 }
 
+export interface Ace {
+  id: number
+  nome: string
+  comune_id: number
+  prov_id: number
+  prov_nome: string
+  piemonte: boolean
+  lon: number
+  lat: number
+}
+
 export interface Meta {
   periodo: { da: string; a: string; giorni: number }
   fasce: { id: string; da: number; a: number }[]
   province: Provincia[]
   zone: Zona[]
+  ace: Ace[]
 }
 
 export interface Filters {
   dow: number[]
   fascia: string[]
   motivo: string[] // "mo>md"
-  origine: string[] // "p:<id>" | "c:<id>"
+  origine: string[] // "p:<id>" | "c:<id>" | "a:<id>"
   destinazione: string[]
   genere: string[]
   eta: string[]

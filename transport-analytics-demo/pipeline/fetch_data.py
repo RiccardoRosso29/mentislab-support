@@ -33,7 +33,12 @@ def fetch_bucket(bucket_name: str, force: bool) -> None:
     for blob in client.list_blobs(bucket_name):
         if not blob.name.endswith((".csv", ".json")):
             continue
-        target = RAW_DIR / Path(blob.name).name
+        # le geometrie (livello_geo, chiave_geo, wkt) vanno con le altre sorgenti geografiche
+        if blob.name.endswith("_geometrie.csv"):
+            GEO_SRC_DIR.mkdir(parents=True, exist_ok=True)
+            target = GEO_SRC_DIR / "geometrie.csv"
+        else:
+            target = RAW_DIR / Path(blob.name).name
         if target.exists() and target.stat().st_size == blob.size and not force:
             print(f"  = {blob.name} (già presente)")
             continue

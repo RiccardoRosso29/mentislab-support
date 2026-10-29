@@ -70,17 +70,17 @@ make docker-up           # http://localhost:8000
 ## Versione statica (senza server)
 
 `make static` produce in `frontend/dist-static/` una versione che non richiede backend: il dataset completo
-è esportato in colonne binarie compresse (~21 MB, `pipeline/export_static.py`) e un Web Worker
+è esportato in colonne binarie compresse (~33 MB, a livello ACE, `pipeline/export_static.py`) e un Web Worker
 (`frontend/src/local/engine.worker.ts`) riproduce nel browser le stesse risposte di `/api/stats` e `/api/flows`
 (caricamento ~4 s, aggiornamento < 1 s). È la versione pubblicata come Artifact; si può ospitare su qualunque
 hosting statico. Senza server la mappa di base Carto non viene caricata: restano i confini di comuni e province.
 
 ## Note sui dati
 
-- **Zone**: in Piemonte le zone sono ACE (aree subcomunali per ~40 comuni maggiori, es. Torino ha 57 ACE),
-  fuori regione sono province. Non avendo le geometrie ACE, la mappa lavora a livello **comune** (le ACE sono
-  ricondotte al comune) e **provincia**. Gli spostamenti tra ACE dello stesso comune risultano "interni" al comune.
-  Aggiungendo le geometrie ACE all'estrazione (opzione `wkt` del job) si può abilitare un terzo livello.
+- **Zone**: tre livelli di zonizzazione selezionabili. **ACE ISTAT** (aree di censimento: subcomunali per i
+  comuni maggiori, es. Torino ne ha 57; geometrie dal file `*_geometrie.csv` del bucket), **comuni** (ACE
+  aggregate per codice comune) e **province**. Le zone fuori regione sono province a ogni livello. Nei dati non
+  ci sono spostamenti con origine e destinazione nella stessa ACE.
 - **Motivo**: `motivo_visita_origine/destinazione` indica il rapporto del viaggiatore con il luogo
   (residente → *Casa*, lavoratore → *Lavoro*, visitatore → *Altro*). Es. *Casa → Lavoro* = residente in origine
   e lavoratore in destinazione.

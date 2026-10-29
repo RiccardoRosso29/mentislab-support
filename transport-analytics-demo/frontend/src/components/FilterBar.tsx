@@ -16,9 +16,17 @@ export default function FilterBar({ meta, filters, onChange }: Props) {
     const provP = meta.province.filter((p) => p.piemonte)
     const provX = meta.province.filter((p) => !p.piemonte)
     const comuni = meta.zone.filter((z) => z.piemonte)
+    // ACE elencate solo per i comuni suddivisi in più aree: per gli altri coincidono con il comune
+    const multi = new Set<number>()
+    const seen = new Set<number>()
+    for (const a of meta.ace) if (a.piemonte) (seen.has(a.comune_id) ? multi : seen).add(a.comune_id)
+    const ace = meta.ace
+      .filter((a) => a.piemonte && multi.has(a.comune_id))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'it', { numeric: true }))
     return [
       ...provP.map((p) => ({ value: `p:${p.id}`, label: p.nome, hint: 'provincia', group: 'Province del Piemonte' })),
       ...comuni.map((z) => ({ value: `c:${z.id}`, label: z.nome, hint: z.prov_nome, group: 'Comuni del Piemonte' })),
+      ...ace.map((a) => ({ value: `a:${a.id}`, label: a.nome, hint: a.prov_nome, group: 'Aree di censimento ISTAT (ACE)' })),
       ...provX.map((p) => ({ value: `p:${p.id}`, label: p.nome, hint: p.regione, group: 'Province fuori regione' })),
     ]
   }, [meta])
