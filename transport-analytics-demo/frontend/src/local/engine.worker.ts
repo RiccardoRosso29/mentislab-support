@@ -415,7 +415,8 @@ const CAMPI = [
   'genere', 'eta', 'nazionalita', 'tipologia', 'motivo_origine', 'motivo_destinazione',
 ] as const
 type Campo = (typeof CAMPI)[number]
-const MAX_CAMPI = 4
+// oltre questa soglia di gruppi il dataset è troppo dettagliato per essere calcolato nel browser
+const MAX_GRUPPI = 4_000_000
 
 interface ExportResult {
   campi: Campo[]
@@ -476,6 +477,8 @@ function exportGroups(d: Data, f: Filters, campi: Campo[]): ExportResult {
       groups.set(key, (groups.get(key) ?? 0) + v)
       totale += v
     }
+    if (groups.size > MAX_GRUPPI)
+      throw new BadRequest('combinazione di campi troppo dettagliata: rimuovi qualche campo o scegli un livello territoriale meno fine')
   }
   const nDays = d.days.filter((x) => inPeriod(f, x)).length || 1
   return { campi, groups, totale, nDays, zoneIds: lvl.ids }
@@ -499,7 +502,6 @@ function exportResponse(d: Data, f: Filters, q: URLSearchParams) {
   const campi = split(q.get('campi')) as Campo[]
   if (!campi.length) throw new BadRequest('seleziona almeno un campo')
   if (campi.some((c) => !CAMPI.includes(c))) throw new BadRequest('campo non valido')
-  if (campi.length > MAX_CAMPI) throw new BadRequest(`al massimo ${MAX_CAMPI} campi per dataset`)
   const soglia = Math.max(0, Number(q.get('k')) || 100)
   const ordered = CAMPI.filter((c) => campi.includes(c))
   const r = exportFor(d, f, ordered, q)

@@ -185,7 +185,6 @@ class Warehouse:
     # ---------------------------------------------------------------- export
     CAMPI = ("origine", "destinazione", "giorno", "giorno_settimana", "fascia_oraria",
              "genere", "eta", "nazionalita", "tipologia", "motivo_origine", "motivo_destinazione")
-    MAX_CAMPI = 4
 
     def export(self, f: Filters, campi: list[str], soglia: float, righe: bool) -> dict:
         """Dataset aggregato sui campi scelti; i gruppi con meno di `soglia` spostamenti sono rimossi."""

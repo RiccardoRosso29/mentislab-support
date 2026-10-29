@@ -9,7 +9,8 @@ import Sidebar from './components/Sidebar'
 import Playback, { buildFrames, type PlaybackState } from './components/Playback'
 import ExportModal from './components/ExportModal'
 import { IconDownload } from './components/icons'
-import { BASEMAP_DISPONIBILE, BASEMAPS, type Basemap } from './components/FlowMap'
+import { BASEMAP_DISPONIBILE, type Basemap } from './components/FlowMap'
+import BasemapPicker from './components/BasemapPicker'
 
 const EXTRA_REGION_OFFSET = 900_000
 // slider dei flussi su scala logaritmica: più precisione sui valori bassi
@@ -229,9 +230,8 @@ export default function App() {
           </span>
         </div>
         <div className="topbar-actions">
-          <button className="export-btn" onClick={() => setExportOpen(true)}>
-            <IconDownload />
-            Esporta dati
+          <button className="export-btn" onClick={() => setExportOpen(true)} title="Esporta dati" aria-label="Esporta dati">
+            <IconDownload width={18} height={18} />
           </button>
           <ZoningSelect value={livello} onChange={changeLivello} />
         </div>
@@ -275,13 +275,7 @@ export default function App() {
           ) : (
             <div className="map-bottom-left">
               {BASEMAP_DISPONIBILE && (
-                <div className="basemap-switch" role="radiogroup" aria-label="Tipo di mappa">
-                  {BASEMAPS.map((b) => (
-                    <button key={b.id} role="radio" aria-checked={basemap === b.id} className={basemap === b.id ? 'on' : ''} onClick={() => setBasemap(b.id)}>
-                      {b.label}
-                    </button>
-                  ))}
-                </div>
+                <BasemapPicker value={basemap} onChange={setBasemap} />
               )}
               <button className="pb-open" onClick={() => updatePb({ open: true, playing: true, frame: 0 })}>
                 <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
