@@ -2,7 +2,7 @@ import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 import { COLORS, fmt, fmtCompact, fmtPct } from '../labels'
 
-const FONT = "'Barlow Semi Condensed', 'Barlow', sans-serif"
+const FONT = "Montserrat, 'Helvetica Neue', Arial, sans-serif"
 
 const base = (o: EChartsOption): EChartsOption => ({
   textStyle: { fontFamily: FONT, color: COLORS.text },

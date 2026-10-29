@@ -101,9 +101,13 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <img src="logo-ckdelta.png" alt="CKDelta" className="logo" />
+        <div className="brand">
+          <img src="logo-windtre-business.png" alt="WINDTRE Business" className="logo-w3" />
+          <span className="brand-sep" />
+          <img src="logo-ckdelta.png" alt="CKDelta" className="logo-ck" />
+        </div>
         <div className="title">
-          <h1>Mobility Analytics</h1>
+          <h1>Transport Analytics</h1>
           <span>
             Matrice Origine–Destinazione · Piemonte · {fmtDate(meta.periodo.da, { day: 'numeric', month: 'long' })} →{' '}
             {fmtDate(meta.periodo.a, { day: 'numeric', month: 'long', year: 'numeric' })}

@@ -1,4 +1,4 @@
-# Mobility Analytics — demo matrice Origine/Destinazione
+# Transport Analytics — demo matrice Origine/Destinazione
 
 Demo funzionante di un prodotto di *transport analytics* costruito sull'estrazione OD del Piemonte
 (15–28 giugno 2026, ~14,8 M righe, ~74 M spostamenti). Interfaccia coerente con la Smart Data Platform:
