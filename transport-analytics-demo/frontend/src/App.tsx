@@ -6,6 +6,7 @@ import { COLORS, fmt, fmtDate } from './labels'
 import FilterBar from './components/FilterBar'
 import FlowMap, { type NodeInfo } from './components/FlowMap'
 import Sidebar from './components/Sidebar'
+import Playback, { buildFrames, type PlaybackState } from './components/Playback'
 
 const EXTRA_REGION_OFFSET = 900_000
 // slider dei flussi su scala logaritmica: più precisione sui valori bassi
@@ -119,7 +120,55 @@ export default function App() {
   }, [query, livello, limit])
 
   const stats = useApi<Stats>(meta ? `/api/stats?${query}` : null)
-  const flows = useApi<Flows>(meta ? `/api/flows?${buildQuery(livello, filters, selection, { limit })}` : null)
+
+  // ---- playback: la mappa scorre per fasce orarie (giornata tipo) o per giorno e fascia (periodo)
+  const [pb, setPb] = useState<PlaybackState>({ open: false, playing: false, mode: 'tipo', frame: 0, speed: 1 })
+  const updatePb = useCallback((s: Partial<PlaybackState>) => setPb((cur) => ({ ...cur, ...s })), [])
+  const frames = useMemo(() => {
+    if (!meta) return []
+    const [da, a] = filters.periodo.length ? filters.periodo : [meta.periodo.da, meta.periodo.a]
+    const days: string[] = []
+    for (let d = new Date(da + 'T00:00:00Z'); d.toISOString().slice(0, 10) <= a; d.setUTCDate(d.getUTCDate() + 1)) {
+      const dow = ((d.getUTCDay() + 6) % 7) + 1
+      if (!filters.dow.length || filters.dow.includes(dow)) days.push(d.toISOString().slice(0, 10))
+    }
+    const fasce = meta.fasce.map((f) => f.id).filter((id) => !filters.fascia.length || filters.fascia.includes(id))
+    return buildFrames(pb.mode, days, fasce)
+  }, [meta, filters.periodo, filters.dow, filters.fascia, pb.mode])
+  const frameFilters = (i: number): Filters => {
+    const fr = frames[i]
+    if (!fr) return filters
+    return { ...filters, fascia: [fr.fascia], periodo: fr.day ? [fr.day, fr.day] : filters.periodo }
+  }
+  const flowsUrl = (fl: Filters) => `/api/flows?${buildQuery(livello, fl, selection, { limit })}`
+  const pbActive = pb.open && frames.length > 0
+  const currentFlowsUrl = meta ? flowsUrl(pbActive ? frameFilters(pb.frame) : filters) : null
+  const flows = useApi<Flows>(currentFlowsUrl, pbActive ? 0 : 120)
+
+  // scala fissa durante il playback, presa dalla vista complessiva: una fascia pesa al più ~40% del giorno
+  const [pbScale, setPbScale] = useState<{ arc: number; node: number } | null>(null)
+  useEffect(() => {
+    if (pbActive || !flows.data) return
+    const d = flows.data
+    setPbScale({
+      arc: Math.max(1, ...d.flussi.map((x) => x.n)) * 0.4,
+      node: Math.max(1, ...d.nodi.map((x) => x.uscita + x.ingresso + x.interni)) * 0.4,
+    })
+  }, [pbActive, flows.data])
+
+  // avanzamento: il fotogramma successivo parte solo quando quello corrente è stato disegnato
+  const frameReady = flows.dataUrl === currentFlowsUrl
+  useEffect(() => {
+    if (!pbActive || !pb.playing || !frameReady) return
+    const next = (pb.frame + 1) % frames.length
+    getJSON(flowsUrl(frameFilters(next))).catch(() => undefined) // precalcolo
+    const t = setTimeout(() => updatePb({ frame: next }), (pb.mode === 'tipo' ? 1600 : 900) / pb.speed)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pbActive, pb.playing, pb.frame, pb.speed, frameReady, frames.length])
+  useEffect(() => {
+    if (pb.frame >= frames.length) updatePb({ frame: 0 })
+  }, [frames.length, pb.frame, updatePb])
 
   const nodes = useMemo(() => {
     const m = new Map<number, NodeInfo>()
@@ -142,7 +191,14 @@ export default function App() {
   )
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setSelection(null)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelection(null)
+      const tag = (e.target as HTMLElement).tagName
+      if (e.key === ' ' && tag !== 'INPUT' && tag !== 'BUTTON') {
+        e.preventDefault()
+        setPb((cur) => (cur.open ? { ...cur, playing: !cur.playing } : cur))
+      }
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
@@ -190,7 +246,25 @@ export default function App() {
             selection={selection}
             onSelect={setSelection}
             extraRegionOffset={EXTRA_REGION_OFFSET}
+            scale={pbActive ? pbScale : null}
           />
+
+          {pbActive ? (
+            <Playback
+              state={pb}
+              frames={frames}
+              fasceOre={fasceOre}
+              volume={frameReady && f ? f.volume_flussi : null}
+              onChange={updatePb}
+            />
+          ) : (
+            <button className="pb-open" onClick={() => updatePb({ open: true, playing: true, frame: 0 })}>
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
+                <path d="M7 4.5v15l13-7.5z" fill="currentColor" />
+              </svg>
+              Riproduci la giornata
+            </button>
+          )}
 
           {selection && (
             <div className="sel-chip">
@@ -265,7 +339,7 @@ export default function App() {
           {progress !== null && progress < 1 ? (
             <div className="busy">Caricamento dei dati · {Math.round(progress * 100)}%</div>
           ) : (
-            (flows.loading || stats.loading) && <div className="busy">Aggiornamento…</div>
+            !pbActive && (flows.loading || stats.loading) && <div className="busy">Aggiornamento…</div>
           )}
         </section>
       </main>

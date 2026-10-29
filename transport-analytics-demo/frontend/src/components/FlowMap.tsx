@@ -28,6 +28,8 @@ interface Props {
   selection: Selection
   onSelect: (s: Selection) => void
   extraRegionOffset: number
+  /** Massimi fissi per archi e nodi: durante il playback la scala non cambia da un fotogramma all'altro. */
+  scale?: { arc: number; node: number } | null
 }
 
 const BASEMAP = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
@@ -66,7 +68,7 @@ interface Arc {
   width: number
 }
 
-export default function FlowMap({ livello, flows, nodes, aree, province, selection, onSelect, extraRegionOffset }: Props) {
+export default function FlowMap({ livello, flows, nodes, aree, province, selection, onSelect, extraRegionOffset, scale }: Props) {
   // zoom arrotondato a 0,5: basta per distanziare le etichette senza ricalcolarle a ogni frame
   const [zoom, setZoom] = useState(INITIAL_VIEW.zoom)
 
@@ -78,14 +80,14 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
 
   const arcs = useMemo<Arc[]>(() => {
     if (!flows) return []
-    const max = Math.max(1, ...flows.flussi.map((f) => f.n))
+    const max = scale?.arc ?? Math.max(1, ...flows.flussi.map((f) => f.n))
     const selNode = selection?.type === 'nodo' ? selection.id : null
     const out: Arc[] = []
     for (const f of flows.flussi) {
       const a = nodes.get(f.o)
       const b = nodes.get(f.d)
       if (!a || !b) continue
-      const t = Math.sqrt(f.n / max)
+      const t = Math.min(1, Math.sqrt(f.n / max))
       const color =
         selNode != null
           ? withAlpha(f.o === selNode ? OUT : IN, t)
@@ -95,9 +97,12 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
       out.push({ ...f, path: curve([a.lon, a.lat], [b.lon, b.lat]), color, width: 1 + t * 11 })
     }
     return out.reverse() // i flussi maggiori disegnati per ultimi, sopra gli altri
-  }, [flows, nodes, selection])
+  }, [flows, nodes, selection, scale])
 
-  const maxTot = useMemo(() => Math.max(1, ...[...nodeTotals.values()].map((v) => v.tot)), [nodeTotals])
+  const maxTot = useMemo(
+    () => scale?.node ?? Math.max(1, ...[...nodeTotals.values()].map((v) => v.tot)),
+    [nodeTotals, scale],
+  )
   // Punti solo per le zone toccate dai flussi visibili: il volume di tutte le altre è nel riempimento delle aree
   const nodeList = useMemo(() => {
     const visible = new Set<number>(arcs.flatMap((a) => [a.o, a.d]))
@@ -196,9 +201,9 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
       radiusUnits: 'pixels',
       stroked: true,
       getPosition: (d: any) => [d.info.lon, d.info.lat],
-      getRadius: (d: any) => 3 + 15 * Math.sqrt(d.tot / maxTot),
+      getRadius: (d: any) => 3 + 15 * Math.sqrt(Math.min(1, d.tot / maxTot)),
       getFillColor: (d: any) =>
-        selectedIds.has(d.info.id) ? [242, 140, 40, 255] : [40, 40, 40, Math.round(70 + 170 * Math.sqrt(d.tot / maxTot))],
+        selectedIds.has(d.info.id) ? [242, 140, 40, 255] : [40, 40, 40, Math.round(70 + 170 * Math.sqrt(Math.min(1, d.tot / maxTot)))],
       getLineColor: [255, 255, 255, 255],
       lineWidthMinPixels: 1,
       updateTriggers: { getFillColor: [selection, maxTot] },
@@ -210,7 +215,7 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
       getText: (d: any) => d.info.nome,
       getSize: 11,
       getColor: [20, 20, 20, 255],
-      getPixelOffset: (d: any) => [0, -(9 + 15 * Math.sqrt(d.tot / maxTot))],
+      getPixelOffset: (d: any) => [0, -(9 + 15 * Math.sqrt(Math.min(1, d.tot / maxTot)))],
       fontFamily: 'Montserrat, Helvetica Neue, Arial, sans-serif',
       fontWeight: 600,
       outlineWidth: 3,

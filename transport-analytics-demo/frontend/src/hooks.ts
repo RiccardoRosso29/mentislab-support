@@ -6,6 +6,7 @@ export function useApi<T>(url: string | null, debounceMs = 120) {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [dataUrl, setDataUrl] = useState<string | null>(null) // richiesta a cui corrisponde data
 
   useEffect(() => {
     if (!url) return
@@ -15,6 +16,7 @@ export function useApi<T>(url: string | null, debounceMs = 120) {
       getJSON<T>(url, ctrl.signal)
         .then((d) => {
           setData(d)
+          setDataUrl(url)
           setError(null)
           setLoading(false)
         })
@@ -30,7 +32,7 @@ export function useApi<T>(url: string | null, debounceMs = 120) {
     }
   }, [url, debounceMs])
 
-  return { data, loading, error }
+  return { data, loading, error, dataUrl }
 }
 
 export function useClickOutside(ref: React.RefObject<HTMLElement>, onOutside: () => void, active: boolean) {
