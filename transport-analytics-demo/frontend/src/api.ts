@@ -1,3 +1,5 @@
+import { isStatic, localApi } from './local/client'
+
 export type Livello = 'comune' | 'provincia'
 
 export interface Provincia {
@@ -95,6 +97,7 @@ export function buildQuery(livello: Livello, f: Filters, sel: Selection, extra: 
 }
 
 export async function getJSON<T>(url: string, signal?: AbortSignal): Promise<T> {
+  if (isStatic && url.startsWith('/api/')) return localApi<T>(url, signal)
   const res = await fetch(url, { signal })
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`)
   return res.json() as Promise<T>

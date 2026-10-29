@@ -27,3 +27,9 @@ docker-data:        ## pipeline in container (richiede GCP_KEY_FILE)
 
 docker-up:
 	docker compose up --build app
+
+static:             ## versione senza backend (motore nel browser) in frontend/dist-static
+	python pipeline/export_static.py
+	cd frontend && rm -rf dist-static && VITE_STATIC=1 npx vite build --outDir dist-static
+	mkdir -p frontend/dist-static/data frontend/dist-static/geo
+	cp data/static/* frontend/dist-static/data/ && cp data/geo/*.geojson frontend/dist-static/geo/

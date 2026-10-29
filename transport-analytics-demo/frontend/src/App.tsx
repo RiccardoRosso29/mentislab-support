@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { EMPTY_FILTERS, buildQuery, getJSON, type Filters, type Flows, type Livello, type Meta, type Selection, type Stats } from './api'
 import { useApi } from './hooks'
+import { isStatic } from './local/client'
 import { COLORS, fmt, fmtDate } from './labels'
 import FilterBar from './components/FilterBar'
 import FlowMap, { type NodeInfo } from './components/FlowMap'
@@ -41,15 +42,22 @@ export default function App() {
   const [geo, setGeo] = useState<{ comuni: any; province: any }>({ comuni: null, province: null })
 
   const { data: meta, error: metaError } = useApi<Meta>('/api/meta', 0)
+  const [progress, setProgress] = useState<number | null>(null)
+  useEffect(() => {
+    const on = (e: Event) => setProgress((e as CustomEvent<number>).detail)
+    window.addEventListener('engine-progress', on)
+    return () => window.removeEventListener('engine-progress', on)
+  }, [])
 
   useEffect(() => {
-    Promise.all([getJSON('/geo/comuni.geojson'), getJSON('/geo/province.geojson')]).then(([comuni, province]) =>
+    Promise.all([getJSON('geo/comuni.geojson'), getJSON('geo/province.geojson')]).then(([comuni, province]) =>
       setGeo({ comuni, province }),
     )
   }, [])
 
   const query = buildQuery(livello, filters, selection)
   useEffect(() => {
+    if (isStatic) return // ospitata in un frame che non accetta query string nell'URL
     const q = new URLSearchParams(query)
     q.delete('livello')
     if (livello !== 'comune') q.set('livello', livello)
@@ -93,7 +101,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <img src="/logo-ckdelta.png" alt="CKDelta" className="logo" />
+        <img src="logo-ckdelta.png" alt="CKDelta" className="logo" />
         <div className="title">
           <h1>Mobility Analytics</h1>
           <span>
@@ -190,7 +198,11 @@ export default function App() {
             <p className="mp-hint">Clic su una zona: flussi in ingresso e uscita · clic su un flusso: relazione tra le due zone</p>
           </div>
 
-          {(flows.loading || stats.loading) && <div className="busy">Aggiornamento…</div>}
+          {progress !== null && progress < 1 ? (
+            <div className="busy">Caricamento dei dati · {Math.round(progress * 100)}%</div>
+          ) : (
+            (flows.loading || stats.loading) && <div className="busy">Aggiornamento…</div>
+          )}
         </section>
       </main>
     </div>

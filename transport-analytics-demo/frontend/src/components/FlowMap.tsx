@@ -6,6 +6,7 @@ import MapGL from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Flows, Livello, Selection } from '../api'
 import { fmt } from '../labels'
+import { isStatic } from '../local/client'
 
 type RGBA = [number, number, number, number]
 type Feature = { type: 'Feature'; properties: Record<string, any>; geometry: any }
@@ -300,7 +301,7 @@ export default function FlowMap({ livello, flows, nodes, comuni, province, selec
           return text ? { text, className: 'deck-tip' } : null
         }}
       >
-        <MapGL mapStyle={BASEMAP} reuseMaps />
+        {!isStatic && <MapGL mapStyle={BASEMAP} reuseMaps />}
       </DeckGL>
     </div>
   )

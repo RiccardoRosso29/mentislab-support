@@ -67,6 +67,14 @@ GCP_KEY_FILE=/percorso/chiave.json make docker-data
 make docker-up           # http://localhost:8000
 ```
 
+## Versione statica (senza server)
+
+`make static` produce in `frontend/dist-static/` una versione che non richiede backend: il dataset completo
+è esportato in colonne binarie compresse (~21 MB, `pipeline/export_static.py`) e un Web Worker
+(`frontend/src/local/engine.worker.ts`) riproduce nel browser le stesse risposte di `/api/stats` e `/api/flows`
+(caricamento ~4 s, aggiornamento < 1 s). È la versione pubblicata come Artifact; si può ospitare su qualunque
+hosting statico. Senza server la mappa di base Carto non viene caricata: restano i confini di comuni e province.
+
 ## Note sui dati
 
 - **Zone**: in Piemonte le zone sono ACE (aree subcomunali per ~40 comuni maggiori, es. Torino ha 57 ACE),
