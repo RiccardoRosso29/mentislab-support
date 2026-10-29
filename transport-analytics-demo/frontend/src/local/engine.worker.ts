@@ -162,6 +162,8 @@ interface Filters {
   link: [number, number] | null
   da: string | null
   a: string | null
+  /** esclude gli spostamenti interni a una zona (origine = destinazione al livello corrente) */
+  xi: boolean
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -212,6 +214,7 @@ function parse(q: URLSearchParams): Filters {
     nodo: q.get('nodo') ? Number(q.get('nodo')) : null,
     da: DATE.test(q.get('da') ?? '') ? q.get('da') : null,
     a: DATE.test(q.get('a') ?? '') ? q.get('a') : null,
+    xi: q.get('xi') === '1',
     link: link.length === 2 ? [link[0], link[1]] : null,
   }
 }
@@ -262,6 +265,7 @@ function compute(d: Data, f: Filters): Result {
     if (!sideOk(f.destinazione, zoneId[id], zoneComune[id], zoneProv[id])) continue
     const ko = lvl.ofAce[io], kd = lvl.ofAce[id]
     const o = lvl.ids[ko], de = lvl.ids[kd]
+    if (f.xi && o === de) continue
     if (f.nodo !== null && o !== f.nodo && de !== f.nodo) continue
     if (f.link && !((o === f.link[0] && de === f.link[1]) || (o === f.link[1] && de === f.link[0]))) continue
 
@@ -574,6 +578,7 @@ function exportGroups(d: Data, f: Filters, campi: Campo[]): ExportResult {
     const io = pzo[p], id = pzd[p]
     if (!sideOk(f.origine, zoneId[io], zoneComune[io], zoneProv[io])) continue
     if (!sideOk(f.destinazione, zoneId[id], zoneComune[id], zoneProv[id])) continue
+    if (f.xi && lvl.ofAce[io] === lvl.ofAce[id]) continue
     const zk = (on('origine') ? lvl.ofAce[io] : 0) * Z + (on('destinazione') ? lvl.ofAce[id] : 0)
     for (let r = pStart[p], end = pStart[p + 1]; r < end; r++) {
       const k1 = t1[p1[r]], k2 = t2[p2[r]], k3 = t3[p3[r]]

@@ -54,7 +54,13 @@ const nf0 = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 0 })
 const nf1 = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 1 })
 
 export const fmt = (v: number | null | undefined) => (v == null ? '–' : nf0.format(Math.round(v)))
+/** Soglia minima mostrabile: nessun conteggio di spostamenti sotto 100 compare in grafici, tabelle o tooltip. */
+export const SOGLIA_MIN = 100
+/** Formatta un numero di spostamenti mascherando i valori sotto soglia. */
+export const fmtN = (v: number | null | undefined) => (v == null ? '–' : v > 0 && v < SOGLIA_MIN ? `<${SOGLIA_MIN}` : nf0.format(Math.round(v)))
 export const fmtPct = (v: number | null | undefined) => (v == null ? '–' : `${nf1.format(v * 100)}%`)
+/** Come fmtCompact, per conteggi di spostamenti: sotto soglia mostra «<100». */
+export const fmtCompactN = (v: number) => (v > 0 && v < SOGLIA_MIN ? `<${SOGLIA_MIN}` : fmtCompact(v))
 export function fmtCompact(v: number) {
   if (Math.abs(v) >= 1e6) return `${nf1.format(v / 1e6)} M`
   if (Math.abs(v) >= 1e3) return `${nf1.format(v / 1e3)} k`

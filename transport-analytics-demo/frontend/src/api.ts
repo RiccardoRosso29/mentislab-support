@@ -52,6 +52,8 @@ export interface Filters {
   eta: string[]
   nazionalita: string[]
   tipologia: string[]
+  /** ['1'] = esclude gli spostamenti con origine e destinazione nella stessa zona (dal grafico "Bilancio della zona") */
+  xi: string[]
 }
 
 export type Selection =
@@ -128,6 +130,7 @@ export const EMPTY_FILTERS: Filters = {
   eta: [],
   nazionalita: [],
   tipologia: [],
+  xi: [],
 }
 
 export function buildQuery(livello: Livello, f: Filters, sel: Selection, extra: Record<string, string | number> = {}) {

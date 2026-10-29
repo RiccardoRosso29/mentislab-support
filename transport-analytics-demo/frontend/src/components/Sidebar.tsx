@@ -1,5 +1,5 @@
 import { memo, useState, type ReactNode } from 'react'
-import type { Filters, Relazioni, Selection, Stats } from '../api'
+import type { Filters, Livello, Relazioni, Selection, Stats } from '../api'
 import {
   COLORS,
   DOW,
@@ -13,9 +13,10 @@ import {
   etaLabel,
   fmt,
   fmtDate,
+  fmtN,
   fmtPct,
 } from '../labels'
-import { BarChart, Donut, GroupedBars, Heatmap, LineDaily, StackBar } from './Charts'
+import { BarChart, Donut, GroupedBars, Heatmap, LineDaily, StackBar, fmtPp } from './Charts'
 
 // i motivi di spostamento sono un modulo commerciale a sé: sezione separata, sempre per ultima
 const SEZIONI = { panoramica: 'Panoramica', comportamenti: 'Comportamenti', profili: 'Profili', motivi: 'Motivi' } as const
@@ -42,6 +43,9 @@ interface Props {
   bench: Stats | null
   rel: Relazioni | null
   onOpenRelazioni: () => void
+  /** statistiche della selezione senza filtri di origine/destinazione: base di "Bilancio" e "Direzioni" */
+  odFree: Stats | null
+  livello: Livello
 }
 
 /** Tabella delle relazioni: classifica generale, relazioni della zona, o posizione della relazione scelta. */
@@ -65,8 +69,8 @@ function OdTable({
   const isSel = (x: (typeof list)[number]) =>
     selection?.type === 'link' && ((x.o === selection.a && x.d === selection.b) || (x.o === selection.b && x.d === selection.a))
   if (selection?.type === 'link') {
-    // prima e ultima come riferimento, più le relazioni attorno a quella selezionata
-    const keep = new Set<number>([0, list.length - 1])
+    // la prima come riferimento, più le relazioni attorno a quella selezionata
+    const keep = new Set<number>([0])
     list.forEach((x, i) => isSel(x) && [i - 2, i - 1, i, i + 1, i + 2].forEach((k) => k >= 0 && k < list.length && keep.add(k)))
     const idx = [...keep].sort((a, b) => a - b)
     rows = []
@@ -99,7 +103,7 @@ function OdTable({
                 <td>
                   {row.r.o_nome} <span className="arrow">→</span> {row.r.d_nome}
                 </td>
-                <td className="num">{fmt(row.r.media)}</td>
+                <td className="num">{fmtN(row.r.media)}</td>
                 <td className="num muted">{fmtPct(row.r.n / rel.totale)}</td>
               </tr>
             ),
@@ -151,8 +155,9 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
   )
 }
 
-function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, filters, onFilters, bench, rel, onOpenRelazioni }: Props) {
+function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, filters, onFilters, bench, rel, onOpenRelazioni, odFree, livello }: Props) {
   const [focus, setFocus] = useState<Set<Sezione>>(ALL)
+  const [hideNA, setHideNA] = useState(false)
   // con tutte le sezioni attive il primo clic isola la sezione; svuotando la selezione si torna a tutte
   const toggle = (k: Sezione) =>
     setFocus((cur) => {
@@ -185,6 +190,19 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
     const t = keys.reduce((s, k) => s + (rec[k] ?? 0), 0)
     return t > 0 ? (rec[keys[0]] ?? 0) / t : null
   }
+  /** Scarto di ogni quota della selezione dalla quota corrispondente nel profilo medio. */
+  const deltaQuote = (sel: number[], ref: number[]) => {
+    const st = sel.reduce((s, v) => s + v, 0)
+    const rt = ref.reduce((s, v) => s + v, 0)
+    return st > 0 && rt > 0 ? sel.map((v, i) => v / st - ref[i] / rt) : undefined
+  }
+  const generiVisibili = hideNA ? ['f', 'm'] : ['f', 'm', 'NA']
+  // motivi: quota di ogni combinazione nel profilo medio, per la tacca sulle barre orizzontali
+  const motBench = (mo: string, md: string) => {
+    if (!bx) return null
+    const t = bx.motivi.reduce((s, r) => s + r.n, 0)
+    return t > 0 ? (bx.motivi.find((r) => r.mo === mo && r.md === md)?.n ?? 0) / t : null
+  }
   const benchNote = bx ? <p className="bench-note"><i /> Profilo medio dell’area di studio, riportato sul totale della selezione</p> : null
   const genereTot = (g: string) => cx.genere[g] ?? 0
   const etaBy = (g: string) => ETA.filter((e) => e !== 'NA').map((e) => perDay(cx.eta.find((r) => r.genere === g && r.eta === e)?.n ?? 0))
@@ -194,7 +212,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
   const motTot = cx.motivi.reduce((s, r) => s + r.n, 0)
   const motRank = cx.motivi
     .filter((r) => r.n > 0)
-    .map((r) => ({ label: `${MOTIVI[r.mo]} → ${MOTIVI[r.md]}`, n: r.n }))
+    .map((r) => ({ label: `${MOTIVI[r.mo]} → ${MOTIVI[r.md]}`, n: r.n, mo: r.mo, md: r.md }))
     .sort((a, b) => b.n - a.n)
 
   const fasce = Object.keys(FASCE).map((k) => cx.per_fascia.find((r) => r.fascia === k)?.media ?? 0)
@@ -219,8 +237,35 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
   })
   const periodoAttivo = da ? (da === a ? fmtDate(da) : `${fmtDate(da)} – ${fmtDate(a)}`) : null
 
-  const nodo = stats.kpi.nodo
+  // "Bilancio" e "Direzioni" filtrano per origine/destinazione: come gli altri grafici restano completi
+  // (dati senza quei filtri) ed evidenziano la parte scelta
+  const odBase = odFree ?? stats
+  const nodo = odBase.kpi.nodo
   const linkA = selection?.type === 'link' ? selection.a : null
+  const tok = (id: number) => `${livello === 'ace' ? 'a' : livello === 'comune' ? 'c' : 'p'}:${id}`
+  const same = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i])
+  const odState = (o: string[], d: string[], xi: boolean) => same(filters.origine, o) && same(filters.destinazione, d) && filters.xi.length === Number(xi)
+  const setOD = (o: string[], d: string[], xi: boolean) =>
+    onFilters(odState(o, d, xi) ? { ...filters, origine: [], destinazione: [], xi: [] } : { ...filters, origine: o, destinazione: d, xi: xi ? ['1'] : [] })
+  const clearOD = () => onFilters({ ...filters, origine: [], destinazione: [], xi: [] })
+
+  const bilancio = (() => {
+    if (selection?.type !== 'nodo') return null
+    const t = tok(selection.id)
+    const opts = [
+      { label: 'In uscita', o: [t], d: [] as string[], xi: true },
+      { label: 'In ingresso', o: [] as string[], d: [t], xi: true },
+      { label: 'Interni', o: [t], d: [t], xi: false },
+    ]
+    const attivo = opts.findIndex((x) => odState(x.o, x.d, x.xi))
+    return { opts, attivo }
+  })()
+  const direzioni = (() => {
+    if (selection?.type !== 'link') return null
+    const rows = [...odBase.top_od].sort((x, y) => Number(y.o === linkA) - Number(x.o === linkA))
+    const attivo = rows.findIndex((r) => odState([tok(r.o)], [tok(r.d)], false))
+    return { rows, attivo }
+  })()
 
   const items: Item[] = [
     {
@@ -228,8 +273,8 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       sezione: 'panoramica',
       render: () => (
         <div className="kpi-grid">
-          <Kpi label="Spostamenti medi / giorno" value={fmt(stats.kpi.media_giornaliera)} />
-          <Kpi label="Spostamenti nel periodo" value={fmt(total)} />
+          <Kpi label="Spostamenti medi / giorno" value={fmtN(stats.kpi.media_giornaliera)} />
+          <Kpi label="Spostamenti nel periodo" value={fmtN(total)} />
         </div>
       ),
     },
@@ -238,8 +283,14 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       sezione: 'panoramica',
       show: Boolean(stats.kpi.nodo),
       render: () => (
-        <Card title="Bilancio della zona" subtitle="Spostamenti medi giornalieri">
+        <Card
+          title="Bilancio della zona"
+          subtitle="Spostamenti medi giornalieri"
+          filtro={{ attivo: bilancio && bilancio.attivo >= 0 ? bilancio.opts[bilancio.attivo].label : null, onClear: clearOD }}
+        >
           <StackBar
+            onPick={(i) => bilancio && setOD(bilancio.opts[i].o, bilancio.opts[i].d, bilancio.opts[i].xi)}
+            selected={bilancio && bilancio.attivo >= 0 ? (i) => i === bilancio.attivo : undefined}
             items={[
               { label: 'In uscita', value: perDay(nodo?.uscita ?? 0), color: COLORS.out },
               { label: 'In ingresso', value: perDay(nodo?.ingresso ?? 0), color: COLORS.in },
@@ -254,11 +305,18 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       sezione: 'panoramica',
       show: selection?.type === 'link',
       render: () => (
-        <Card title="Direzioni" subtitle="Spostamenti medi giornalieri">
+        <Card
+          title="Direzioni"
+          subtitle="Spostamenti medi giornalieri"
+          filtro={{
+            attivo: direzioni && direzioni.attivo >= 0 ? `${direzioni.rows[direzioni.attivo].o_nome} → ${direzioni.rows[direzioni.attivo].d_nome}` : null,
+            onClear: clearOD,
+          }}
+        >
           <StackBar
-            items={[...stats.top_od]
-              .sort((x, y) => Number(y.o === linkA) - Number(x.o === linkA))
-              .map((r) => ({
+            onPick={(i) => direzioni && setOD([tok(direzioni.rows[i].o)], [tok(direzioni.rows[i].d)], false)}
+            selected={direzioni && direzioni.attivo >= 0 ? (i) => i === direzioni.attivo : undefined}
+            items={(direzioni?.rows ?? []).map((r) => ({
                 label: `${r.o_nome} → ${r.d_nome}`,
                 value: r.media,
                 color: r.o === linkA ? COLORS.out : COLORS.in,
@@ -365,16 +423,30 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
             total={motTot}
           />
           <ol className="rank">
-            {motRank.slice(0, 5).map((r) => (
-              <li key={r.label}>
-                <span>{r.label}</span>
-                <span className="rank-bar">
-                  <i style={{ width: `${(r.n / motRank[0].n) * 100}%` }} />
-                </span>
-                <b>{fmtPct(r.n / motTot)}</b>
-              </li>
-            ))}
+            {motRank.slice(0, 5).map((r) => {
+              const scala = motRank[0].n / motTot // la barra più lunga corrisponde alla quota più alta
+              const b = motBench(r.mo, r.md)
+              const quota = r.n / motTot
+              return (
+                <li key={r.label}>
+                  <span>{r.label}</span>
+                  <span className="rank-bar">
+                    <i style={{ width: `${(quota / scala) * 100}%` }} />
+                    {b != null && <span className="rank-bench" style={{ left: `${Math.min(100, (b / scala) * 100)}%` }} title={`Profilo medio: ${fmtPct(b)}`} />}
+                  </span>
+                  <b>
+                    {fmtPct(quota)}
+                    {b != null && <small className="pp">{fmtPp(quota - b)}</small>}
+                  </b>
+                </li>
+              )
+            })}
           </ol>
+          {bx && (
+            <p className="bench-note">
+              <i /> Quota della combinazione nel profilo medio dell’area; a destra lo scarto in punti percentuali
+            </p>
+          )}
         </Card>
       ),
     },
@@ -405,16 +477,24 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
           subtitle={naDemo > 0 ? `N/D: viaggiatori stranieri, senza profilo sociodemografico` : undefined}
           filtro={filtro('genere', (v) => GENERI[v])}
         >
+          {naDemo > 0 && (
+            <label className="card-flag">
+              <input id="hide-na" type="checkbox" checked={hideNA} onChange={(e) => setHideNA(e.target.checked)} />
+              Nascondi N/D
+            </label>
+          )}
           <Donut
-            height={190}
-            onPick={(p) => choose('genere', ['f', 'm', 'NA'][p.dataIndex], p.multi)}
-            selected={hl('genere', (i) => ['f', 'm', 'NA'][i])}
-            items={[
-              { name: GENERI.f, value: perDay(genereTot('f')), color: COLORS.purple },
-              { name: GENERI.m, value: perDay(genereTot('m')), color: COLORS.accent },
-              { name: GENERI.NA, value: perDay(naDemo), color: COLORS.grey },
-            ]}
+            height={bx ? 210 : 190}
+            onPick={(p) => choose('genere', generiVisibili[p.dataIndex], p.multi)}
+            selected={hl('genere', (i) => generiVisibili[i])}
+            items={generiVisibili.map((g) => ({
+              name: GENERI[g],
+              value: perDay(genereTot(g)),
+              color: g === 'f' ? COLORS.purple : g === 'm' ? COLORS.accent : COLORS.grey,
+            }))}
+            deltas={bx ? deltaQuote(generiVisibili.map(genereTot), generiVisibili.map((g) => bx.genere[g] ?? 0)) : undefined}
           />
+          {benchNote && <p className="bench-note">Sotto ogni quota: scarto in punti percentuali dal profilo medio dell’area</p>}
         </Card>
       ),
     },

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
-import type { EChartsOption } from 'echarts'
-import { COLORS, fmt, fmtCompact, fmtPct } from '../labels'
+import type { CustomSeriesOption, EChartsOption } from 'echarts'
+import { COLORS, fmtCompact, fmtCompactN, fmtN as fmt, fmtPct } from '../labels'
 
 const FONT = "Montserrat, 'Helvetica Neue', Arial, sans-serif"
 
@@ -40,16 +40,26 @@ export interface Pick {
 // opacità degli elementi non selezionati quando un grafico ha una selezione attiva
 const DIM = 0.28
 
-/** Serie del benchmark: un trattino sopra ogni barra, al valore atteso con il profilo medio. */
-const benchSeries = (bench: (number | null)[], width: number) => ({
-  type: 'scatter' as const,
+/** Colore riservato al benchmark: diverso da tutti quelli dei dati, così il riferimento resta riconoscibile. */
+export const BENCH = '#2563eb'
+
+/** Serie del benchmark: un trattino blu tratteggiato su ogni barra, al valore atteso con il profilo medio. */
+const benchSeries = (bench: (number | null)[], share: number): CustomSeriesOption => ({
+  type: 'custom' as const,
   name: 'Profilo medio',
-  data: bench,
-  symbol: 'rect',
-  symbolSize: [width, 2.5],
-  itemStyle: { color: COLORS.text },
+  data: bench.map((v, i) => [i, v]),
   z: 10,
-  silent: false,
+  renderItem: (_: unknown, api: any) => {
+    if (api.value(1) == null) return null
+    const [x, y] = api.coord([api.value(0), api.value(1)])
+    const w = Math.max(10, api.size([1, 0])[0] * share)
+    return {
+      type: 'line' as const,
+      shape: { x1: x - w / 2, y1: y, x2: x + w / 2, y2: y },
+      style: { stroke: BENCH, lineWidth: 2, lineDash: [4, 3] },
+    }
+  },
+  encode: { x: 0, y: 1, tooltip: 1 },
   tooltip: { valueFormatter: (v: unknown) => fmt(v as number) },
 })
 type OnPick = (p: Pick) => void
@@ -121,16 +131,32 @@ export function BarChart({
                 borderRadius: [2, 2, 0, 0],
               },
             })),
-            label: { show: labels.length <= 7 && !bench, position: 'top', formatter: (p) => fmtCompact(p.value as number), fontSize: 11, color: COLORS.muted },
+            label: { show: labels.length <= 7 && !bench, position: 'top', formatter: (p) => fmtCompactN(p.value as number), fontSize: 11, color: COLORS.muted },
           },
-          ...(bench ? [benchSeries(bench, 30)] : []),
+          ...(bench ? [benchSeries(bench, 0.62)] : []),
         ],
       }}
     />
   )
 }
 
-export function Donut({ items, height = 170, onPick, selected }: { items: { name: string; value: number; color: string }[]; height?: number; onPick?: OnPick; selected?: (i: number) => boolean }) {
+/** Differenza in punti percentuali, con segno: «+1,2 pp». */
+export const fmtPp = (d: number) => `${d > 0 ? '+' : d < 0 ? '−' : '±'}${Math.abs(d * 100).toLocaleString('it-IT', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} pp`
+
+export function Donut({
+  items,
+  height = 170,
+  onPick,
+  selected,
+  deltas,
+}: {
+  items: { name: string; value: number; color: string }[]
+  height?: number
+  onPick?: OnPick
+  selected?: (i: number) => boolean
+  /** scarto di ogni quota rispetto al profilo medio (benchmark), in frazione */
+  deltas?: (number | null)[]
+}) {
   const total = items.reduce((s, i) => s + i.value, 0)
   return (
     <Chart
@@ -145,8 +171,15 @@ export function Donut({ items, height = 170, onPick, selected }: { items: { name
             center: ['50%', '50%'],
             label: {
               show: true,
-              formatter: (p) => `{n|${p.name}}\n{v|${total ? fmtPct((p.value as number) / total) : ''}}`,
-              rich: { n: { fontSize: 12, color: COLORS.muted, fontFamily: FONT }, v: { fontSize: 16, fontWeight: 700, fontFamily: FONT, color: COLORS.text } },
+              formatter: (p) => {
+                const d = deltas?.[p.dataIndex]
+                return `{n|${p.name}}\n{v|${total ? fmtPct((p.value as number) / total) : ''}}${d != null ? `\n{d|${fmtPp(d)}}` : ''}`
+              },
+              rich: {
+                n: { fontSize: 12, color: COLORS.muted, fontFamily: FONT },
+                v: { fontSize: 16, fontWeight: 700, fontFamily: FONT, color: COLORS.text },
+                d: { fontSize: 10.5, fontWeight: 600, fontFamily: FONT, color: BENCH, padding: [2, 0, 0, 0] },
+              },
             },
             labelLine: { length: 8, length2: 10 },
             data: items.map((it, i) => ({ name: it.name, value: it.value, itemStyle: { color: it.color, opacity: selected && !selected(i) ? DIM : 1 } })),
@@ -286,7 +319,7 @@ export function LineDaily({
               itemStyle: { color: weekend[i] ? COLORS.secondary : COLORS.accent, opacity: selected && !selected(i) ? DIM : 1 },
             })),
           },
-          ...(bench ? [benchSeries(bench, 16)] : []),
+          ...(bench ? [benchSeries(bench, 0.75)] : []),
         ],
       }}
     />

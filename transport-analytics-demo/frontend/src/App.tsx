@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EMPTY_FILTERS, buildQuery, getJSON, type Filters, type Flows, type Livello, type Meta, type Relazioni, type Selection, type Stats } from './api'
 import { useApi, useClickOutside } from './hooks'
 import { isStatic } from './local/client'
-import { COLORS, fmt, fmtDate } from './labels'
+import { COLORS, fmt, fmtDate, fmtN } from './labels'
 import FilterBar from './components/FilterBar'
 import FlowMap, { type NodeInfo } from './components/FlowMap'
 import Sidebar from './components/Sidebar'
@@ -128,7 +128,12 @@ export default function App() {
 
   const stats = useApi<Stats>(meta ? `/api/stats?${query}` : null)
   // profilo medio (stessi filtri, senza selezione) per i benchmark dei grafici
-  const bench = useApi<Stats>(meta && selection ? `/api/stats?${buildQuery(livello, filters, null)}` : null)
+  // (senza i filtri di origine/destinazione: il riferimento è l'intera area di studio)
+  const noOD = { ...filters, origine: [], destinazione: [], xi: [] }
+  const bench = useApi<Stats>(meta && selection ? `/api/stats?${buildQuery(livello, noOD, null)}` : null)
+  // selezione senza filtri di origine/destinazione: "Bilancio" e "Direzioni" restano completi quando li si usa per filtrare
+  const odAttivi = filters.origine.length + filters.destinazione.length + filters.xi.length > 0
+  const odFree = useApi<Stats>(meta && selection && odAttivi ? `/api/stats?${buildQuery(livello, noOD, selection)}` : null)
   // relazioni sopra soglia: della zona selezionata, oppure di tutta l'area (classifica generale o posizione di una relazione)
   const rel = useApi<Relazioni>(
     meta ? `/api/relazioni?${buildQuery(livello, filters, selection?.type === 'nodo' ? selection : null)}&k=100` : null,
@@ -294,6 +299,8 @@ export default function App() {
           bench={selection ? bench.data : null}
           rel={rel.data}
           onOpenRelazioni={openRel}
+          odFree={selection && odAttivi ? odFree.data : null}
+          livello={livello}
         />
         <div
           className="sb-resizer"
@@ -394,7 +401,7 @@ export default function App() {
                 {f && (
                   <p className="mp-note">
                     {fmt(Math.min(limit, f.coppie_totali))} di {fmt(f.coppie_totali)} relazioni attive ·{' '}
-                    {fmt(f.volume_flussi)} spostamenti medi/giorno tra zone diverse
+                    {fmtN(f.volume_flussi)} spostamenti medi/giorno tra zone diverse
                   </p>
                 )}
                 <div className="legend">

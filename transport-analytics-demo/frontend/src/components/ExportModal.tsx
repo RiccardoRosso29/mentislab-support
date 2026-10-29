@@ -153,7 +153,7 @@ function exampleRows(campi: Campo[], meta: Meta, livello: Livello) {
   })
 }
 
-function toCsv(header: string[], rows: (string | number)[][]) {
+export function toCsv(header: string[], rows: (string | number)[][]) {
   // separatore ";" e virgola decimale: il file si apre correttamente in Excel con impostazioni italiane
   const cell = (v: string | number) => {
     const s = typeof v === 'number' ? String(v).replace('.', ',') : v

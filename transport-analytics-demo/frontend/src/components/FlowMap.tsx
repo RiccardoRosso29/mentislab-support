@@ -5,7 +5,7 @@ import { FlyToInterpolator, WebMercatorViewport, type MapViewState, type Picking
 import MapGL from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Flows, Livello, Selection } from '../api'
-import { fmt } from '../labels'
+import { fmtN as fmt } from '../labels' // tutti i valori della mappa sono conteggi di spostamenti
 import { isStatic } from '../local/client'
 
 type RGBA = [number, number, number, number]

@@ -1,4 +1,4 @@
-import { FASCE, fmt, fmtDate } from '../labels'
+import { FASCE, fmtDate, fmtN } from '../labels'
 
 export interface Frame {
   day: string | null // null = giornata tipo (media sui giorni filtrati)
@@ -48,7 +48,7 @@ export default function Playback({ state, frames, fasceOre, volume, onChange }: 
           <span className="pb-slot">
             {FASCE[fr.fascia]} <small>{fasceOre[fr.fascia]}</small>
           </span>
-          {volume != null && <span className="pb-vol">{fmt(volume)} spostamenti tra zone</span>}
+          {volume != null && <span className="pb-vol">{fmtN(volume)} spostamenti tra zone</span>}
         </div>
       )}
       <div className="pb-bar">

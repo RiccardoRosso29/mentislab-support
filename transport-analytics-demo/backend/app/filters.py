@@ -63,6 +63,7 @@ class Filters:
     destinazione: tuple[list[int], list[int], list[int]] = ([], [], [])
     da: date | None = None
     a: date | None = None
+    xi: bool = False  # esclude gli spostamenti interni a una zona al livello corrente
     nodo: int | None = None
     link: tuple[int, int] | None = None
 
@@ -114,6 +115,8 @@ class Filters:
             if parts:
                 clauses.append("(" + " OR ".join(parts) + ")")
 
+        if self.xi:
+            clauses.append(f"{self.zo} <> {self.zd}")
         if with_selection:
             if self.nodo is not None:
                 clauses.append(f"({self.zo} = ? OR {self.zd} = ?)")
@@ -139,6 +142,7 @@ def parse_filters(
     destinazione: str | None = None,
     da: date | None = None,
     a: date | None = None,
+    xi: bool = False,
     nodo: int | None = None,
     link: str | None = Query(None, description="a,b"),
 ) -> Filters:
@@ -167,6 +171,7 @@ def parse_filters(
         destinazione=_zones(destinazione, "destinazione"),
         da=da,
         a=a,
+        xi=xi,
         nodo=nodo,
         link=(link_ids[0], link_ids[1]) if link_ids else None,
     )
