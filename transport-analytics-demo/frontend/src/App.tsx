@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EMPTY_FILTERS, buildQuery, getJSON, type Filters, type Flows, type Livello, type Meta, type Relazioni, type Selection, type Stats } from './api'
 import { useApi, useClickOutside } from './hooks'
 import { isStatic } from './local/client'
-import { COLORS, fmt, fmtDate, fmtN } from './labels'
+import { COLORS, fmt, fmtDate } from './labels'
 import FilterBar from './components/FilterBar'
 import FlowMap, { type NodeInfo } from './components/FlowMap'
 import Sidebar from './components/Sidebar'
@@ -96,7 +96,7 @@ export default function App() {
   const [filters, setFilters] = useState<Filters>(initial.filters)
   const [selection, setSelection] = useState<Selection>(initial.selection)
   const [limit, setLimit] = useState(initial.limit)
-  const [panelOpen, setPanelOpen] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(true)
   const [exportOpen, setExportOpen] = useState(false)
   const [basemap, setBasemap] = useState<Basemap>('chiara')
   const [geo, setGeo] = useState<{ ace: any; comuni: any; province: any }>({ ace: null, comuni: null, province: null })
@@ -400,8 +400,7 @@ export default function App() {
                 </div>
                 {f && (
                   <p className="mp-note">
-                    {fmt(Math.min(limit, f.coppie_totali))} di {fmt(f.coppie_totali)} relazioni attive ·{' '}
-                    {fmtN(f.volume_flussi)} spostamenti medi/giorno tra zone diverse
+                    {fmt(Math.min(limit, f.coppie_totali))} di {fmt(f.coppie_totali)} relazioni attive
                   </p>
                 )}
                 <div className="legend">
@@ -420,7 +419,6 @@ export default function App() {
                     </span>
                   )}
                 </div>
-                <p className="mp-hint">Clic su una zona: flussi in ingresso e uscita · clic su un flusso: relazione tra le due zone</p>
               </div>
             )}
           </div>

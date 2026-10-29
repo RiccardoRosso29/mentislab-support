@@ -57,10 +57,14 @@ const benchSeries = (bench: (number | null)[], share: number): CustomSeriesOptio
       type: 'line' as const,
       shape: { x1: x - w / 2, y1: y, x2: x + w / 2, y2: y },
       style: { stroke: BENCH, lineWidth: 2, lineDash: [4, 3] },
+      // nessun effetto al passaggio del mouse: il trattino resta fermo, il valore compare solo nel tooltip
+      emphasisDisabled: true,
     }
   },
+  itemStyle: { color: BENCH }, // pallino del tooltip nello stesso blu del trattino
   encode: { x: 0, y: 1, tooltip: 1 },
   tooltip: { valueFormatter: (v: unknown) => fmt(v as number) },
+  animation: false,
 })
 type OnPick = (p: Pick) => void
 
