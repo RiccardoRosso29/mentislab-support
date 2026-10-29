@@ -278,7 +278,7 @@ export default function App() {
           <img src="logo-ckdelta.png" alt="CKDelta" className="logo-ck" />
         </div>
         <div className="title">
-          <h1>Transport Analytics</h1>
+          <h1>Trip Analytics</h1>
           <span>
             Matrice Origine–Destinazione · Piemonte · {fmtDate(meta.periodo.da, { day: 'numeric', month: 'long' })} →{' '}
             {fmtDate(meta.periodo.a, { day: 'numeric', month: 'long', year: 'numeric' })}

@@ -552,15 +552,15 @@ body.resizing-any .ag { animation: none; }
 .ag-table td { padding: 5px 6px; border-bottom: 1px solid #f2f0ed; }
 .ag-table td.num { text-align: right; white-space: nowrap; }
 .ag-input { display: flex; align-items: flex-end; gap: 8px; padding: 12px 14px; border-top: 1px solid #e8e6e3; background: #fff; }
-.ag-input textarea { flex: 1; resize: none; border: 1px solid #e0ddd9; border-radius: 10px; padding: 9px 11px; font-family: inherit; font-size: 13px; line-height: 1.4; outline: none; max-height: 120px; }
+.ag-input textarea { flex: 1; resize: none; border: 1px solid #e0ddd9; border-radius: 10px; padding: 10px 11px; font-family: inherit; font-size: 13px; line-height: 1.4; outline: none; min-height: 42px; max-height: 160px; overflow-y: auto; transition: height 0.12s ease-out; }
 .ag-input textarea:focus { border-color: var(--accent); }
 .ag-send { width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .ag-send:hover:not(:disabled) { background: var(--accent-dark); }
 .ag-send:disabled { background: #e6cdb3; cursor: default; }
 .ag-send.stop { background: var(--dark); }
-.day-legend { display: flex; gap: 10px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.day-legend { display: flex; justify-content: flex-end; gap: 12px; font-size: 11px; color: var(--text); white-space: nowrap; margin: 2px 0 -6px; position: relative; z-index: 1; }
 .day-legend span { display: flex; align-items: center; gap: 5px; }
-.day-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.day-legend i { width: 10px; height: 10px; display: inline-block; }
 .card-title-right { display: flex; align-items: center; gap: 8px; min-width: 0; }
 
 /* ---- dettatura vocale ---- */

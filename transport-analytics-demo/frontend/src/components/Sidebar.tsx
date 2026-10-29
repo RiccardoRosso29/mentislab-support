@@ -347,8 +347,8 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
           title="Andamento giornaliero"
           subtitle="Spostamenti totali per giorno"
           filtro={{ attivo: periodoAttivo, onClear: () => onFilters({ ...filters, periodo: [] }) }}
-          azione={legendaSettimana}
         >
+          {legendaSettimana}
           <LineDaily
             onPick={(p) => {
               const day = cx.giornaliero[p.dataIndex]?.giorno
@@ -390,8 +390,8 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
           title="Giorno della settimana"
           subtitle="Spostamenti medi per giorno"
           filtro={filtro('dow', (v) => DOW[Number(v) - 1].short)}
-          azione={legendaSettimana}
         >
+          {legendaSettimana}
           <BarChart
             onPick={(p) => choose('dow', p.dataIndex + 1, p.multi)}
             highlight={hl('dow', (i) => i + 1)}
@@ -494,7 +494,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       render: () => (
         <Card
           title="Genere"
-          subtitle={naDemo > 0 && !hideNA ? `N/D: viaggiatori stranieri, senza profilo sociodemografico` : undefined}
+          subtitle={`Spostamenti medi giornalieri per genere${naDemo > 0 && !hideNA ? ' · N/D: viaggiatori stranieri, senza profilo sociodemografico' : ''}`}
           filtro={filtro('genere', (v) => GENERI[v])}
           azione={
             naDemo > 0 && (

@@ -39,7 +39,7 @@ export default function RelazioniModal({ rel, titolo, selection, onSelectLink, o
     const data = rows.map(({ r, rank }) => [rank, r.o_nome, r.d_nome, mask(r.media), mask(r.n), Math.round((r.n / rel.totale) * 1e5) / 1e5])
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([toCsv(header, data)], { type: 'text/csv;charset=utf-8' }))
-    a.download = `transport-analytics_relazioni${query ? '_' + query.trim().replace(/\W+/g, '-') : ''}.csv`
+    a.download = `trip-analytics_relazioni${query ? '_' + query.trim().replace(/\W+/g, '-') : ''}.csv`
     document.body.appendChild(a)
     a.click()
     a.remove()

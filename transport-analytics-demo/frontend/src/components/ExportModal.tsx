@@ -241,7 +241,7 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
       const a = document.createElement('a')
       a.href = URL.createObjectURL(blob)
       const nome = tab === 'temi' ? `${preset}_${granularita}` : 'personalizzato'
-      a.download = `transport-analytics_${nome}_${livello}.csv`
+      a.download = `trip-analytics_${nome}_${livello}.csv`
       document.body.appendChild(a)
       a.click()
       a.remove()

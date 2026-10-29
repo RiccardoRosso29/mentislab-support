@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
 STATIC_DIR = Path(os.environ.get("STATIC_DIR", ROOT / "frontend" / "dist"))
 
-app = FastAPI(title="Transport Analytics API", version="0.1.0")
+app = FastAPI(title="Trip Analytics API", version="0.1.0")
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 wh = Warehouse(DATA_DIR / "warehouse.duckdb")
 

@@ -19,7 +19,7 @@ function originAllowed(req) {
   if (!origin) return true
   try {
     const o = new URL(origin)
-    return o.host === host || (o.hostname.endsWith('.vercel.app') && o.hostname.startsWith('transport-analytics'))
+    return o.host === host || (o.hostname.endsWith('.vercel.app') && /^(transport|trip)-analytics/.test(o.hostname))
   } catch {
     return false
   }

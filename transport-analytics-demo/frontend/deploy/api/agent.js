@@ -1,4 +1,4 @@
-// Vercel Function: proxy verso OpenAI Responses API per l'agente di Transport Analytics.
+// Vercel Function: proxy verso OpenAI Responses API per l'agente di Trip Analytics.
 //
 // La chiave (OPENAI_API_KEY_TRIP) resta sul server. Istruzioni e strumenti sono definiti qui, così il browser
 // non può modificarli; gli strumenti però vengono eseguiti nel browser, sul motore di calcolo della dashboard,
@@ -10,7 +10,7 @@ const MAX_ITEMS = 400
 const MAX_BYTES = 900_000
 const MAX_DOMANDA = 3_000 // caratteri, incluso il contesto della dashboard aggiunto dal client
 
-const INSTRUCTIONS = `Sei Mobility Agent, l'assistente analitico di Transport Analytics, una piattaforma di analisi della mobilità.
+const INSTRUCTIONS = `Sei Mobility Agent, l'assistente analitico di Trip Analytics, una piattaforma di analisi della mobilità.
 Rispondi sempre in italiano, in modo chiaro e professionale, con frasi brevi.
 
 DATI
@@ -225,7 +225,7 @@ function originAllowed(req) {
   if (!origin) return true // stessa origine: alcuni browser non inviano l'header sulle richieste same-origin
   try {
     const o = new URL(origin)
-    return o.host === host || o.hostname.endsWith('.vercel.app') && o.hostname.startsWith('transport-analytics')
+    return o.host === host || (o.hostname.endsWith('.vercel.app') && /^(transport|trip)-analytics/.test(o.hostname))
   } catch {
     return false
   }

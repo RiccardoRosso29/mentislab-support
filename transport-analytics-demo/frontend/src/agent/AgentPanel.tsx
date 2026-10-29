@@ -117,12 +117,12 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
   }, [msgs])
   useEffect(() => inputRef.current?.focus(), [])
 
-  // il campo di testo cresce con il contenuto (fino a circa 6 righe), utile con le domande dettate
+  // il campo di testo parte da una riga e cresce con il contenuto fino a circa 7 righe, poi scorre
   useEffect(() => {
     const el = inputRef.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = `${Math.min(140, el.scrollHeight + 2)}px`
+    el.style.height = `${Math.min(160, el.scrollHeight + 2)}px`
   }, [text, dict.state])
 
   const contesto = () => {
@@ -451,7 +451,7 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
             <textarea
               id="ag-question"
               ref={inputRef}
-              rows={2}
+              rows={1}
               placeholder={dict.state === 'transcribing' ? 'Trascrizione in corso…' : 'Fai una domanda sui dati…'}
               value={text}
               disabled={dict.state === 'transcribing'}
