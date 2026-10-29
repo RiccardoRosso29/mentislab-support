@@ -443,7 +443,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
             })}
           </ol>
           {bx && (
-            <p className="bench-note">
+            <p className="bench-note tick">
               <i /> Quota della combinazione nel profilo medio dell’area; a destra lo scarto in punti percentuali
             </p>
           )}

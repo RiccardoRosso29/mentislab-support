@@ -435,7 +435,8 @@ body.resizing { cursor: col-resize; user-select: none; }
 
 /* ---- benchmark ---- */
 .bench-note { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
-.bench-note i { width: 16px; height: 0; border-top: 2px dashed #2563eb; display: inline-block; }
+.bench-note i { position: relative; width: 18px; height: 0; border-top: 1.2px dashed #2563eb; display: inline-block; }
+.bench-note i::after { content: ""; position: absolute; left: 6px; top: -3.5px; width: 5px; height: 5px; border-radius: 50%; background: #2563eb; }
 .stack-bench { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed #2563eb; pointer-events: none; z-index: 2; }
 .stack-bench i { position: absolute; top: -17px; left: 0; transform: translateX(-50%); font-style: normal; font-size: 10px; font-weight: 600; color: #2563eb; white-space: nowrap; background: var(--panel); padding: 0 3px; }
 .stackbar-wrap:has(.stack-bench) { padding-top: 16px; }
@@ -466,3 +467,5 @@ body.resizing { cursor: col-resize; user-select: none; }
 .rank .pp { font-size: 9.5px; font-weight: 600; color: #2563eb; }
 .rl-export { margin-left: auto; width: 36px; height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(242, 140, 40, 0.3); transition: background 0.2s; }
 .rl-export:hover { background: var(--accent-dark); }
+.bench-note.tick i { width: 0; height: 12px; border-top: 0; border-left: 2px dashed #2563eb; }
+.bench-note.tick i::after { display: none; }

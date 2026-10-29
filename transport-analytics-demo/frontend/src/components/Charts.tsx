@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
-import type { CustomSeriesOption, EChartsOption } from 'echarts'
+import type { EChartsOption, LineSeriesOption } from 'echarts'
 import { COLORS, fmtCompact, fmtCompactN, fmtN as fmt, fmtPct } from '../labels'
 
 const FONT = "Montserrat, 'Helvetica Neue', Arial, sans-serif"
@@ -43,26 +43,20 @@ const DIM = 0.28
 /** Colore riservato al benchmark: diverso da tutti quelli dei dati, così il riferimento resta riconoscibile. */
 export const BENCH = '#2563eb'
 
-/** Serie del benchmark: un trattino blu tratteggiato su ogni barra, al valore atteso con il profilo medio. */
-const benchSeries = (bench: (number | null)[], share: number): CustomSeriesOption => ({
-  type: 'custom' as const,
+/** Serie del benchmark: linea tratteggiata sottile che unisce i valori attesi con il profilo medio, con un pallino per barra. */
+const benchSeries = (bench: (number | null)[]): LineSeriesOption => ({
+  type: 'line',
   name: 'Profilo medio',
-  data: bench.map((v, i) => [i, v]),
+  data: bench,
   z: 10,
-  renderItem: (_: unknown, api: any) => {
-    if (api.value(1) == null) return null
-    const [x, y] = api.coord([api.value(0), api.value(1)])
-    const w = Math.max(10, api.size([1, 0])[0] * share)
-    return {
-      type: 'line' as const,
-      shape: { x1: x - w / 2, y1: y, x2: x + w / 2, y2: y },
-      style: { stroke: BENCH, lineWidth: 2, lineDash: [4, 3] },
-      // nessun effetto al passaggio del mouse: il trattino resta fermo, il valore compare solo nel tooltip
-      emphasisDisabled: true,
-    }
-  },
-  itemStyle: { color: BENCH }, // pallino del tooltip nello stesso blu del trattino
-  encode: { x: 0, y: 1, tooltip: 1 },
+  symbol: 'circle',
+  symbolSize: 5,
+  showSymbol: true,
+  connectNulls: true,
+  lineStyle: { color: BENCH, width: 1.2, type: [4, 3] },
+  itemStyle: { color: BENCH, borderColor: '#fff', borderWidth: 1 },
+  // nessun effetto al passaggio del mouse: la linea resta ferma, il valore compare solo nel tooltip
+  emphasis: { disabled: true },
   tooltip: { valueFormatter: (v: unknown) => fmt(v as number) },
   animation: false,
 })
@@ -137,7 +131,7 @@ export function BarChart({
             })),
             label: { show: labels.length <= 7 && !bench, position: 'top', formatter: (p) => fmtCompactN(p.value as number), fontSize: 11, color: COLORS.muted },
           },
-          ...(bench ? [benchSeries(bench, 0.62)] : []),
+          ...(bench ? [benchSeries(bench)] : []),
         ],
       }}
     />
@@ -323,7 +317,7 @@ export function LineDaily({
               itemStyle: { color: weekend[i] ? COLORS.secondary : COLORS.accent, opacity: selected && !selected(i) ? DIM : 1 },
             })),
           },
-          ...(bench ? [benchSeries(bench, 0.75)] : []),
+          ...(bench ? [benchSeries(bench)] : []),
         ],
       }}
     />
