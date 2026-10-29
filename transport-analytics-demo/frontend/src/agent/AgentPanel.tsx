@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Filters, Livello, Meta, Selection } from '../api'
 import AgentVisual from './AgentVisual'
+import { useDictation } from './dictation'
 import { deleteChat, loadChats, newChatId, relTime, saveChat, type SavedChat } from './history'
 import { TOOL_LABEL, describeFilters, runTool, type ToolContext, type Visual } from './tools'
 
@@ -70,6 +71,34 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
     return { w: 460, h: 640 }
   })
   const panel = useRef<HTMLElement>(null)
+
+  // dettatura: il testo trascritto si aggiunge alla domanda, che l'utente può rivedere prima di inviare
+  const dict = useDictation((t) => {
+    setText((cur) => (cur.trim() ? `${cur.trimEnd()} ${t}` : t))
+    requestAnimationFrame(() => {
+      const el = inputRef.current
+      if (el) {
+        el.focus()
+        el.setSelectionRange(el.value.length, el.value.length)
+      }
+    })
+  })
+  useEffect(() => {
+    if (dict.state !== 'recording') return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        dict.cancel()
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        dict.stop()
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [dict.state, dict.cancel, dict.stop])
+  const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
   // ultima versione di messaggi e conversazione, per salvarle a fine risposta
   const latest = useRef<{ msgs: Msg[]; items: Item[] }>({ msgs: [], items: [] })
   latest.current = { msgs, items }
@@ -87,6 +116,14 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' })
   }, [msgs])
   useEffect(() => inputRef.current?.focus(), [])
+
+  // il campo di testo cresce con il contenuto (fino a circa 6 righe), utile con le domande dettate
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(140, el.scrollHeight + 2)}px`
+  }, [text, dict.state])
 
   const contesto = () => {
     const s = state.current
@@ -388,20 +425,65 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
           ask(text)
         }}
       >
-        <textarea
-          id="ag-question"
-          ref={inputRef}
-          rows={2}
-          placeholder="Fai una domanda sui dati…"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              ask(text)
-            }
-          }}
-        />
+        {dict.state === 'recording' ? (
+          <div className="ag-rec" role="status" aria-live="polite">
+            <span className="ag-rec-dot" aria-hidden />
+            <span className="ag-rec-label">In ascolto</span>
+            <span className="ag-rec-wave" aria-hidden>
+              {[0.55, 0.8, 1, 0.7, 0.9, 0.6, 0.85].map((k, i) => (
+                <i key={i} style={{ transform: `scaleY(${0.15 + Math.min(1, dict.level * k * 1.6)})` }} />
+              ))}
+            </span>
+            <span className="ag-rec-time">{mmss(dict.seconds)}</span>
+            <button type="button" className="ag-rec-btn" onClick={dict.cancel} title="Annulla (Esc)" aria-label="Annulla la dettatura">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+            <button type="button" className="ag-rec-btn ok" onClick={dict.stop} title="Termina e trascrivi (Invio)" aria-label="Termina e trascrivi">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="m5 12.5 4.5 4.5L19 7.5" />
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <div className="ag-field">
+            <textarea
+              id="ag-question"
+              ref={inputRef}
+              rows={2}
+              placeholder={dict.state === 'transcribing' ? 'Trascrizione in corso…' : 'Fai una domanda sui dati…'}
+              value={text}
+              disabled={dict.state === 'transcribing'}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  ask(text)
+                }
+              }}
+            />
+            {dict.supported && (
+              <button
+                type="button"
+                className={`ag-mic ${dict.state === 'transcribing' ? 'busy' : ''}`}
+                onClick={dict.start}
+                disabled={busy || dict.state !== 'idle'}
+                title="Detta la domanda"
+                aria-label="Detta la domanda"
+              >
+                {dict.state === 'transcribing' ? (
+                  <span className="xp-spin" />
+                ) : (
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <rect x="9" y="3" width="6" height="11" rx="3" />
+                    <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
+                  </svg>
+                )}
+              </button>
+            )}
+          </div>
+        )}
         {busy ? (
           <button type="button" className="ag-send stop" onClick={() => abort.current?.abort()} aria-label="Interrompi">
             <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
@@ -416,6 +498,14 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
           </button>
         )}
       </form>
+      {dict.error && (
+        <p className="ag-dict-error" role="alert">
+          {dict.error}
+          <button type="button" onClick={dict.clearError} aria-label="Chiudi">
+            ✕
+          </button>
+        </p>
+      )}
       </div>
       </div>
     </aside>

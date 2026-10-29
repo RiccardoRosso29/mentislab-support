@@ -347,6 +347,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
           title="Andamento giornaliero"
           subtitle="Spostamenti totali per giorno"
           filtro={{ attivo: periodoAttivo, onClear: () => onFilters({ ...filters, periodo: [] }) }}
+          azione={legendaSettimana}
         >
           <LineDaily
             onPick={(p) => {
@@ -359,7 +360,6 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
             weekend={cx.giornaliero.map((d) => d.dow >= 6)}
             bench={bx ? scaled(cx.giornaliero.map((d) => d.n), bx.giornaliero.map((d) => d.n)) : undefined}
           />
-          {legendaSettimana}
           {benchNote}
         </Card>
       ),
@@ -386,7 +386,12 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       id: 'dow',
       sezione: 'comportamenti',
       render: () => (
-        <Card title="Giorno della settimana" subtitle="Spostamenti medi per giorno" filtro={filtro('dow', (v) => DOW[Number(v) - 1].short)}>
+        <Card
+          title="Giorno della settimana"
+          subtitle="Spostamenti medi per giorno"
+          filtro={filtro('dow', (v) => DOW[Number(v) - 1].short)}
+          azione={legendaSettimana}
+        >
           <BarChart
             onPick={(p) => choose('dow', p.dataIndex + 1, p.multi)}
             highlight={hl('dow', (i) => i + 1)}
@@ -395,7 +400,6 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
             colors={cx.per_dow.map((d) => (d.dow >= 6 ? COLORS.secondary : COLORS.accent))}
             bench={bx ? scaled(cx.per_dow.map((d) => d.media), bx.per_dow.map((d) => d.media)) : undefined}
           />
-          {legendaSettimana}
           {benchNote}
         </Card>
       ),
@@ -508,7 +512,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
             items={generiVisibili.map((g) => ({
               name: GENERI[g],
               value: perDay(genereTot(g)),
-              color: g === 'f' ? COLORS.purple : g === 'm' ? COLORS.accent : COLORS.grey,
+              color: g === 'f' ? COLORS.secondary : g === 'm' ? COLORS.accent : COLORS.grey,
             }))}
             deltas={bx ? deltaQuote(generiVisibili.map(genereTot), generiVisibili.map((g) => bx.genere[g] ?? 0)) : undefined}
           />

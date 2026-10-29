@@ -253,8 +253,10 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSelection(null)
-      const tag = (e.target as HTMLElement).tagName
-      if (e.key === ' ' && tag !== 'INPUT' && tag !== 'BUTTON') {
+      // la barra spaziatrice avvia/mette in pausa il playback solo fuori dai campi di testo (es. chat dell'agente)
+      const t = e.target as HTMLElement
+      const editing = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(t.tagName) || t.isContentEditable
+      if (e.key === ' ' && !editing) {
         e.preventDefault()
         setPb((cur) => (cur.open ? { ...cur, playing: !cur.playing } : cur))
       }
