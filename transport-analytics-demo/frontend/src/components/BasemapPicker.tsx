@@ -10,7 +10,15 @@ const THUMBS: Record<Basemap, string> = {
 }
 
 /** Selettore del tipo di mappa: un riquadro con l'anteprima che si apre sulle alternative. */
-export default function BasemapPicker({ value, onChange }: { value: Basemap; onChange: (b: Basemap) => void }) {
+interface Props {
+  value: Basemap
+  onChange: (b: Basemap) => void
+  /** opacità di flussi e nodi, 0.15–1 */
+  opacity: number
+  onOpacity: (v: number) => void
+}
+
+export default function BasemapPicker({ value, onChange, opacity, onOpacity }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const close = useCallback(() => setOpen(false), [])
@@ -29,22 +37,37 @@ export default function BasemapPicker({ value, onChange }: { value: Basemap; onC
         </span>
       </button>
       {open && (
-        <div className="bm-panel" role="radiogroup" aria-label="Tipo di mappa">
+        <div className="bm-panel">
+          <div className="bm-tiles" role="radiogroup" aria-label="Tipo di mappa">
           {BASEMAPS.map((b) => (
             <button
               key={b.id}
               role="radio"
               aria-checked={b.id === value}
               className={`bm-tile ${b.id === value ? 'on' : ''}`}
-              onClick={() => {
-                onChange(b.id)
-                close()
-              }}
+              onClick={() => onChange(b.id)}
             >
               <img src={THUMBS[b.id]} alt="" />
               <span>{b.label}</span>
             </button>
           ))}
+          </div>
+          <label className="bm-opacity" htmlFor="bm-opacity">
+            <span>
+              Opacità flussi e nodi <b>{Math.round(opacity * 100)}%</b>
+            </span>
+            <input
+              id="bm-opacity"
+              className="slider"
+              type="range"
+              min={15}
+              max={100}
+              step={5}
+              value={Math.round(opacity * 100)}
+              style={{ '--fill': `${((opacity * 100 - 15) / 85) * 100}%` } as React.CSSProperties}
+              onChange={(e) => onOpacity(Number(e.target.value) / 100)}
+            />
+          </label>
         </div>
       )}
     </div>

@@ -170,7 +170,8 @@ export function Donut({
             label: {
               show: true,
               formatter: (p) => {
-                const d = deltas?.[p.dataIndex]
+                // lo scarto viaggia nei dati della serie: così un suo cambiamento ridisegna il grafico
+                const d = (p.data as { delta?: number | null }).delta
                 return `{n|${p.name}}\n{v|${total ? fmtPct((p.value as number) / total) : ''}}${d != null ? `\n{d|${fmtPp(d)}}` : ''}`
               },
               rich: {
@@ -180,7 +181,12 @@ export function Donut({
               },
             },
             labelLine: { length: 8, length2: 10 },
-            data: items.map((it, i) => ({ name: it.name, value: it.value, itemStyle: { color: it.color, opacity: selected && !selected(i) ? DIM : 1 } })),
+            data: items.map((it, i) => ({
+              name: it.name,
+              value: it.value,
+              delta: deltas?.[i] ?? null,
+              itemStyle: { color: it.color, opacity: selected && !selected(i) ? DIM : 1 },
+            })),
           },
         ],
       }}

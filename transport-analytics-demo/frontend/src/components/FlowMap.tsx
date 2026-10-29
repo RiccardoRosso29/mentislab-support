@@ -31,6 +31,8 @@ interface Props {
   /** Massimi fissi per archi e nodi: durante il playback la scala non cambia da un fotogramma all'altro. */
   scale?: { arc: number; node: number } | null
   basemap?: Basemap
+  /** opacità di flussi e nodi (0–1), regolabile dall'utente per leggere meglio la mappa sottostante */
+  opacity?: number
 }
 
 export type Basemap = 'chiara' | 'strade' | 'satellite'
@@ -61,6 +63,10 @@ const STYLES: Record<Basemap, string | object> = {
 }
 const INITIAL_VIEW = { longitude: 7.95, latitude: 45.05, zoom: 7.3, pitch: 0, bearing: 0 }
 
+// zona selezionata e passaggio del mouse sulle aree: blu ardesia, diverso dai colori dei flussi
+const SEL_FILL: RGBA = [52, 84, 120, 46]
+const SEL_LINE: RGBA = [52, 84, 120, 230]
+const SEL_HOVER: RGBA = [52, 84, 120, 34]
 const OUT: RGBA = [242, 140, 40, 220]
 const IN: RGBA = [111, 66, 193, 210]
 const NEUTRAL_LO: RGBA = [246, 178, 107, 30]
@@ -94,7 +100,7 @@ interface Arc {
   width: number
 }
 
-export default function FlowMap({ livello, flows, nodes, aree, province, selection, onSelect, extraRegionOffset, scale, basemap = 'chiara' }: Props) {
+export default function FlowMap({ livello, flows, nodes, aree, province, selection, onSelect, extraRegionOffset, scale, basemap = 'chiara', opacity = 1 }: Props) {
   // zoom arrotondato a 0,5: basta per distanziare le etichette senza ricalcolarle a ogni frame
   const [zoom, setZoom] = useState(INITIAL_VIEW.zoom)
 
@@ -168,9 +174,10 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
     return f.properties.piemonte ? -1 : extraRegionOffset + f.properties.id
   }
 
-  // aree neutre: il volume è già nei nodi e nei flussi; il colore evidenzia solo le zone selezionate
+  // aree neutre: il volume è già nei nodi e nei flussi. La zona selezionata usa un blu ardesia, distinto
+  // dall'arancio e dal viola dei flussi, così le connessioni restano leggibili sopra l'area evidenziata
   const fillFor = (id: number): RGBA => {
-    if (selectedIds.has(id)) return [242, 140, 40, 90]
+    if (selectedIds.has(id)) return SEL_FILL
     // sopra strade e satellite le aree restano quasi trasparenti (ma cliccabili)
     if (BASEMAP_DISPONIBILE && basemap !== 'chiara') return [255, 255, 255, basemap === 'satellite' ? 1 : 30]
     return nodeTotals.has(id) ? [255, 255, 255, 110] : [255, 255, 255, 40]
@@ -201,12 +208,12 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
         filled: true,
         pickable: true,
         autoHighlight: true,
-        highlightColor: [242, 140, 40, 70],
-        getLineColor: sat ? [255, 255, 255, 110] : [150, 150, 150, 90],
-        getLineWidth: 0.5,
+        highlightColor: SEL_HOVER,
+        getLineColor: (f: any) => (selectedIds.has(f.properties.id) ? SEL_LINE : sat ? [255, 255, 255, 110] : [150, 150, 150, 90]),
+        getLineWidth: (f: any) => (selectedIds.has(f.properties.id) ? 2 : 0.5),
         lineWidthUnits: 'pixels',
         getFillColor: (f: any) => fillFor(f.properties.id),
-        updateTriggers: { getFillColor: [flows, selection, livello, basemap], getLineColor: [basemap] },
+        updateTriggers: { getFillColor: [flows, selection, livello, basemap], getLineColor: [basemap, selection], getLineWidth: [selection] },
       }),
     new PathLayer<Arc>({
       id: 'flussi',
@@ -221,6 +228,7 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
       getColor: (d) =>
         selection?.type === 'link' && !(selectedIds.has(d.o) && selectedIds.has(d.d)) ? [180, 180, 180, 60] : d.color,
       getWidth: (d) => d.width,
+      opacity,
       updateTriggers: { getColor: [selection] },
     }),
     new ScatterplotLayer({
@@ -231,11 +239,15 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
       stroked: true,
       getPosition: (d: any) => [d.info.lon, d.info.lat],
       getRadius: (d: any) => 3 + 15 * Math.sqrt(Math.min(1, d.tot / maxTot)),
+      // nodo selezionato: scuro con anello ardesia, come l'area evidenziata
       getFillColor: (d: any) =>
-        selectedIds.has(d.info.id) ? [242, 140, 40, 255] : [40, 40, 40, Math.round(70 + 170 * Math.sqrt(Math.min(1, d.tot / maxTot)))],
-      getLineColor: [255, 255, 255, 255],
+        selectedIds.has(d.info.id) ? [31, 31, 31, 255] : [40, 40, 40, Math.round(70 + 170 * Math.sqrt(Math.min(1, d.tot / maxTot)))],
+      getLineColor: (d: any) => (selectedIds.has(d.info.id) ? SEL_LINE : [255, 255, 255, 255]),
+      getLineWidth: (d: any) => (selectedIds.has(d.info.id) ? 3 : 1),
+      lineWidthUnits: 'pixels',
       lineWidthMinPixels: 1,
-      updateTriggers: { getFillColor: [selection, maxTot] },
+      opacity,
+      updateTriggers: { getFillColor: [selection, maxTot], getLineColor: [selection], getLineWidth: [selection] },
     }),
     new TextLayer({
       id: 'etichette',

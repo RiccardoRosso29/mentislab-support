@@ -104,6 +104,7 @@ export default function App() {
   const [exportOpen, setExportOpen] = useState(false)
   const [agentOpen, setAgentOpen] = useState(false)
   const [basemap, setBasemap] = useState<Basemap>('chiara')
+  const [layerOpacity, setLayerOpacity] = useState(1)
   const [geo, setGeo] = useState<{ ace: any; comuni: any; province: any }>({ ace: null, comuni: null, province: null })
 
   const { data: meta, error: metaError } = useApi<Meta>('/api/meta', 0)
@@ -336,6 +337,7 @@ export default function App() {
             extraRegionOffset={EXTRA_REGION_OFFSET}
             scale={pbActive ? pbScale : null}
             basemap={basemap}
+            opacity={layerOpacity}
           />
 
           {pbActive ? (
@@ -349,7 +351,7 @@ export default function App() {
           ) : (
             <div className="map-bottom-left">
               {BASEMAP_DISPONIBILE && (
-                <BasemapPicker value={basemap} onChange={setBasemap} />
+                <BasemapPicker value={basemap} onChange={setBasemap} opacity={layerOpacity} onOpacity={setLayerOpacity} />
               )}
               <button className="pb-open" onClick={() => updatePb({ open: true, playing: true, frame: 0 })}>
                 <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>

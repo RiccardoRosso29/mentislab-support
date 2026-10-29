@@ -118,6 +118,8 @@ function OdTable({
 }
 
 interface CardProps {
+  /** controllo opzionale nell'angolo in alto a destra della scheda */
+  azione?: ReactNode
   title: string
   subtitle?: string
   children: ReactNode
@@ -125,17 +127,20 @@ interface CardProps {
   filtro?: { attivo: string | null; onClear: () => void }
 }
 
-function Card({ title, subtitle, children, filtro }: CardProps) {
+function Card({ title, subtitle, children, filtro, azione }: CardProps) {
   return (
     <section className={`card ${filtro ? 'interactive' : ''}`}>
       <header>
         <div className="card-title">
           <h3>{title}</h3>
-          {filtro?.attivo && (
-            <button className="card-filter" onClick={filtro.onClear} title="Rimuovi il filtro">
-              {filtro.attivo} <span aria-hidden>✕</span>
-            </button>
-          )}
+          <div className="card-title-right">
+            {filtro?.attivo && (
+              <button className="card-filter" onClick={filtro.onClear} title="Rimuovi il filtro">
+                {filtro.attivo} <span aria-hidden>✕</span>
+              </button>
+            )}
+            {azione}
+          </div>
         </div>
         {subtitle && <p>{subtitle}</p>}
       </header>
@@ -156,7 +161,7 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
 
 function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, filters, onFilters, bench, rel, onOpenRelazioni, odFree, livello }: Props) {
   const [focus, setFocus] = useState<Set<Sezione>>(ALL)
-  const [hideNA, setHideNA] = useState(false)
+  const [hideNA, setHideNA] = useState(true)
   // con tutte le sezioni attive il primo clic isola la sezione; svuotando la selezione si torna a tutte
   const toggle = (k: Sezione) =>
     setFocus((cur) => {
@@ -485,15 +490,17 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       render: () => (
         <Card
           title="Genere"
-          subtitle={naDemo > 0 ? `N/D: viaggiatori stranieri, senza profilo sociodemografico` : undefined}
+          subtitle={naDemo > 0 && !hideNA ? `N/D: viaggiatori stranieri, senza profilo sociodemografico` : undefined}
           filtro={filtro('genere', (v) => GENERI[v])}
+          azione={
+            naDemo > 0 && (
+              <label className="card-flag">
+                <input id="hide-na" type="checkbox" checked={hideNA} onChange={(e) => setHideNA(e.target.checked)} />
+                Nascondi N/D
+              </label>
+            )
+          }
         >
-          {naDemo > 0 && (
-            <label className="card-flag">
-              <input id="hide-na" type="checkbox" checked={hideNA} onChange={(e) => setHideNA(e.target.checked)} />
-              Nascondi N/D
-            </label>
-          )}
           <Donut
             height={bx ? 210 : 190}
             onPick={(p) => choose('genere', generiVisibili[p.dataIndex], p.multi)}
