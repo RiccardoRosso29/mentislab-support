@@ -16,7 +16,6 @@ import {
   fmtPct,
 } from '../labels'
 import { BarChart, Donut, GroupedBars, Heatmap, LineDaily, StackBar } from './Charts'
-import { IconSearch } from './icons'
 
 const SEZIONI = { panoramica: 'Panoramica', comportamenti: 'Comportamenti', profili: 'Profili' } as const
 type Sezione = keyof typeof SEZIONI
@@ -25,7 +24,6 @@ const ALL = new Set(Object.keys(SEZIONI) as Sezione[])
 interface Item {
   id: string
   sezione: Sezione
-  keywords: string // termini per la ricerca, in minuscolo
   show?: boolean
   render: () => ReactNode
 }
@@ -62,7 +60,6 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
 }
 
 export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink }: Props) {
-  const [query, setQuery] = useState('')
   const [focus, setFocus] = useState<Set<Sezione>>(ALL)
   // con tutte le sezioni attive il primo clic isola la sezione; svuotando la selezione si torna a tutte
   const toggle = (k: Sezione) =>
@@ -98,7 +95,6 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
     {
       id: 'kpi',
       sezione: 'panoramica',
-      keywords: 'indicatori kpi spostamenti totale media giornaliera quota scambio stranieri',
       render: () => (
         <div className="kpi-grid">
           <Kpi label="Spostamenti medi / giorno" value={fmt(stats.kpi.media_giornaliera)} sub={`su ${stats.kpi.giorni} giorni`} />
@@ -111,7 +107,6 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
     {
       id: 'bilancio',
       sezione: 'panoramica',
-      keywords: 'bilancio zona uscita ingresso interni',
       show: Boolean(stats.kpi.nodo),
       render: () => (
         <Card title="Bilancio della zona" subtitle="Spostamenti medi giornalieri">
@@ -128,7 +123,6 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
     {
       id: 'direzioni',
       sezione: 'panoramica',
-      keywords: 'direzioni relazione andata ritorno',
       show: selection?.type === 'link',
       render: () => (
         <Card title="Direzioni" subtitle="Spostamenti medi giornalieri">
@@ -147,7 +141,6 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
     {
       id: 'giornaliero',
       sezione: 'panoramica',
-      keywords: 'andamento giornaliero date giorni trend calendario',
       render: () => (
         <Card title="Andamento giornaliero" subtitle="Spostamenti totali per giorno · in grigio scuro il fine settimana">
           <LineDaily
@@ -161,7 +154,6 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
     {
       id: 'top_od',
       sezione: 'panoramica',
-      keywords: 'principali relazioni od origine destinazione coppie flussi classifica',
       show: selection?.type !== 'link',
       render: () => (
         <Card title="Principali relazioni OD" subtitle="Spostamenti medi giornalieri · clic per selezionare">
@@ -187,7 +179,6 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
     {
       id: 'dow',
       sezione: 'comportamenti',
-      keywords: 'giorno settimana feriale weekend fine settimana',
       render: () => (
         <Card title="Giorno della settimana" subtitle="Spostamenti medi per giorno">
           <BarChart
@@ -201,7 +192,6 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
     {
       id: 'fascia',
       sezione: 'comportamenti',
-      keywords: 'fascia oraria orari ora partenza punta mattina sera notte',
       render: () => (
         <Card title="Fascia oraria di partenza" subtitle="Spostamenti medi giornalieri per fascia">
           <BarChart labels={Object.keys(FASCE).map((k) => `${FASCE[k]}\n${fasceOre[k] ?? ''}`)} values={fasce} color={COLORS.accent} height={200} />
@@ -211,7 +201,6 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
     {
       id: 'motivo',
       sezione: 'comportamenti',
-      keywords: 'motivo scopo casa lavoro altro visita pendolari',
       render: () => (
         <Card title="Motivo dello spostamento" subtitle="Origine (righe) → destinazione (colonne): Casa = luogo di residenza, Lavoro = luogo di lavoro, Altro = luogo visitato">
           <Heatmap
@@ -237,7 +226,6 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
     {
       id: 'tipologia',
       sezione: 'comportamenti',
-      keywords: 'tipologia interno scambio extra regione',
       render: () => (
         <Card title="Tipologia di spostamento" subtitle="Spostamenti medi giornalieri">
           <StackBar
@@ -253,7 +241,6 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
     {
       id: 'genere',
       sezione: 'profili',
-      keywords: 'genere sesso donne uomini femmina maschio',
       render: () => (
         <Card title="Genere" subtitle={naDemo > 0 ? `N/D: viaggiatori stranieri, senza profilo sociodemografico` : undefined}>
           <Donut height={190}
@@ -269,7 +256,6 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
     {
       id: 'eta',
       sezione: 'profili',
-      keywords: 'età eta fasce anni giovani anziani genere',
       render: () => (
         <Card title="Età e genere" subtitle="Spostamenti medi giornalieri per fascia d'età">
           <GroupedBars
@@ -285,7 +271,6 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
     {
       id: 'nazionalita',
       sezione: 'profili',
-      keywords: 'nazionalità stranieri italiani turisti internazionale',
       render: () => (
         <Card title="Nazionalità" subtitle="Spostamenti medi giornalieri">
           <StackBar
@@ -300,10 +285,7 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
     },
   ]
 
-  const q = query.trim().toLowerCase()
-  // la ricerca guarda tutte le sezioni; senza ricerca valgono le sezioni attive
-  const match = (it: Item) =>
-    (it.show ?? true) && (q ? `${it.keywords} ${SEZIONI[it.sezione]}`.includes(q) : focus.has(it.sezione))
+  const match = (it: Item) => (it.show ?? true) && focus.has(it.sezione)
   const visible = items.filter(match)
 
   return (
@@ -326,28 +308,15 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
           </p>
         </div>
         <div className="sb-finder">
-          <label className="sb-search">
-            <IconSearch />
-            <input
-              id="metric-search"
-              type="search"
-              placeholder="Cerca una metrica: età, orari, motivo…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </label>
           <div className="sb-chips" role="group" aria-label="Sezioni visibili">
             {(Object.keys(SEZIONI) as Sezione[]).map((k) => {
               const n = items.filter((it) => it.sezione === k && (it.show ?? true)).length
               return (
                 <button
                   key={k}
-                  className={!q && focus.has(k) ? 'on' : ''}
+                  className={focus.has(k) ? 'on' : ''}
                   aria-pressed={focus.has(k)}
-                  onClick={() => {
-                    setQuery('')
-                    toggle(k)
-                  }}
+                  onClick={() => toggle(k)}
                 >
                   {SEZIONI[k]} <span>{n}</span>
                 </button>
@@ -369,11 +338,6 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
           </section>
         )
       })}
-      {visible.length === 0 && (
-        <p className="sb-empty">
-          Nessuna metrica per «{query}». Prova con un altro termine, ad esempio età, orari o motivo.
-        </p>
-      )}
       <footer className="sb-foot">Fonte: estrazione matrice OD Piemonte. I valori sono stime, arrotondate in visualizzazione.</footer>
     </aside>
   )
