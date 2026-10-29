@@ -27,13 +27,31 @@ const catAxis = (data: string[]) => ({
   axisLabel: { color: COLORS.text },
 })
 
-export function Chart({ option, height = 180 }: { option: EChartsOption; height?: number }) {
+/** Elemento cliccato in un grafico: usato per filtrare la dashboard. */
+export interface Pick {
+  dataIndex: number
+  seriesIndex: number
+  name: string
+  value: unknown
+}
+type OnPick = (p: Pick) => void
+
+export function Chart({ option, height = 180, onPick }: { option: EChartsOption; height?: number; onPick?: OnPick }) {
   // L'opzione contiene funzioni (formatter) e cambia identità a ogni render: la si ricrea solo quando
   // cambiano i dati, altrimenti ECharts ridisegna il grafico da zero (effetto "lampeggio").
   const key = JSON.stringify(option)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const opt = useMemo(() => base(option), [key])
-  return <ReactECharts option={opt} style={{ height }} notMerge lazyUpdate opts={{ renderer: 'svg' }} />
+  return (
+    <ReactECharts
+      option={opt}
+      style={{ height, cursor: onPick ? 'pointer' : undefined }}
+      notMerge
+      lazyUpdate
+      opts={{ renderer: 'svg' }}
+      onEvents={onPick ? { click: (e: Pick) => onPick(e) } : undefined}
+    />
+  )
 }
 
 export function BarChart({
@@ -43,6 +61,7 @@ export function BarChart({
   colors,
   height,
   highlight,
+  onPick,
 }: {
   labels: string[]
   values: (number | null)[]
@@ -50,10 +69,12 @@ export function BarChart({
   colors?: string[]
   height?: number
   highlight?: (i: number) => boolean
+  onPick?: OnPick
 }) {
   return (
     <Chart
       height={height}
+      onPick={onPick}
       option={{
         xAxis: { ...catAxis(labels), axisLabel: { color: COLORS.text, interval: 0, lineHeight: 14 } },
         yAxis: valueAxis,
@@ -76,11 +97,12 @@ export function BarChart({
   )
 }
 
-export function Donut({ items, height = 170 }: { items: { name: string; value: number; color: string }[]; height?: number }) {
+export function Donut({ items, height = 170, onPick }: { items: { name: string; value: number; color: string }[]; height?: number; onPick?: OnPick }) {
   const total = items.reduce((s, i) => s + i.value, 0)
   return (
     <Chart
       height={height}
+      onPick={onPick}
       option={{
         tooltip: { trigger: 'item', valueFormatter: (v) => fmt(v as number) },
         series: [
@@ -107,15 +129,18 @@ export function GroupedBars({
   series,
   height = 200,
   stack,
+  onPick,
 }: {
   labels: string[]
   series: { name: string; values: number[]; color: string }[]
   height?: number
   stack?: boolean
+  onPick?: OnPick
 }) {
   return (
     <Chart
       height={height}
+      onPick={onPick}
       option={{
         legend: { top: 0, right: 0, icon: 'rect', itemWidth: 10, itemHeight: 10, textStyle: { fontFamily: FONT } },
         grid: { left: 8, right: 12, top: 28, bottom: 4, containLabel: true },
@@ -140,18 +165,21 @@ export function Heatmap({
   values,
   height = 190,
   total,
+  onPick,
 }: {
   rows: string[]
   cols: string[]
   values: number[][] // [row][col]
   height?: number
   total: number
+  onPick?: OnPick
 }) {
   const data = values.flatMap((r, i) => r.map((v, j) => [j, i, v]))
   const max = Math.max(1, ...values.flat())
   return (
     <Chart
       height={height}
+      onPick={onPick}
       option={{
         tooltip: {
           trigger: 'item',
@@ -185,15 +213,18 @@ export function LineDaily({
   values,
   weekend,
   height = 170,
+  onPick,
 }: {
   labels: string[]
   values: number[]
   weekend: boolean[]
   height?: number
+  onPick?: OnPick
 }) {
   return (
     <Chart
       height={height}
+      onPick={onPick}
       option={{
         xAxis: { ...catAxis(labels), axisLabel: { color: COLORS.muted, interval: 0, rotate: labels.length > 8 ? 45 : 0, fontSize: 10 } },
         yAxis: valueAxis,
@@ -210,14 +241,19 @@ export function LineDaily({
 }
 
 /** Barra impilata 100% in stile card KPI della piattaforma. */
-export function StackBar({ items }: { items: { label: string; value: number; color: string }[] }) {
+export function StackBar({ items, onPick }: { items: { label: string; value: number; color: string }[]; onPick?: (i: number) => void }) {
   const total = items.reduce((s, i) => s + i.value, 0)
   return (
     <div className="stackbar-wrap">
       <div className="stackbar">
         {items.map((i) =>
           total && i.value > 0 ? (
-            <div key={i.label} style={{ width: `${(i.value / total) * 100}%`, background: i.color }} title={`${i.label}: ${fmt(i.value)}`}>
+            <div
+              key={i.label}
+              style={{ width: `${(i.value / total) * 100}%`, background: i.color, cursor: onPick ? 'pointer' : undefined }}
+              title={`${i.label}: ${fmt(i.value)}${onPick ? ' · clic per filtrare' : ''}`}
+              onClick={onPick ? () => onPick(items.indexOf(i)) : undefined}
+            >
               {i.value / total > 0.08 ? fmtPct(i.value / total) : ''}
             </div>
           ) : null,

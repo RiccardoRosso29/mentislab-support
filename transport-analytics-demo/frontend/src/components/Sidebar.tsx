@@ -1,5 +1,5 @@
 import { memo, useState, type ReactNode } from 'react'
-import type { Selection, Stats } from '../api'
+import type { Filters, Selection, Stats } from '../api'
 import {
   COLORS,
   DOW,
@@ -35,14 +35,32 @@ interface Props {
   nameOf: (id: number) => string
   fasceOre: Record<string, string>
   onSelectLink: (a: number, b: number) => void
+  filters: Filters
+  onFilters: (f: Filters) => void
 }
 
-function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
+interface CardProps {
+  title: string
+  subtitle?: string
+  children: ReactNode
+  /** Grafico cliccabile: filtro attivo sulla sua dimensione e comando per rimuoverlo. */
+  filtro?: { attivo: string | null; onClear: () => void }
+}
+
+function Card({ title, subtitle, children, filtro }: CardProps) {
   return (
-    <section className="card">
+    <section className={`card ${filtro ? 'interactive' : ''}`}>
       <header>
-        <h3>{title}</h3>
+        <div className="card-title">
+          <h3>{title}</h3>
+          {filtro?.attivo && (
+            <button className="card-filter" onClick={filtro.onClear} title="Rimuovi il filtro">
+              {filtro.attivo} <span aria-hidden>✕</span>
+            </button>
+          )}
+        </div>
         {subtitle && <p>{subtitle}</p>}
+        {filtro && !filtro.attivo && <p className="card-hint">Clic su un elemento del grafico per filtrare</p>}
       </header>
       {children}
     </section>
@@ -59,7 +77,7 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
   )
 }
 
-function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink }: Props) {
+function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, filters, onFilters }: Props) {
   const [focus, setFocus] = useState<Set<Sezione>>(ALL)
   // con tutte le sezioni attive il primo clic isola la sezione; svuotando la selezione si torna a tutte
   const toggle = (k: Sezione) =>
@@ -87,6 +105,19 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink }: 
     .sort((a, b) => b.n - a.n)
 
   const fasce = Object.keys(FASCE).map((k) => stats.per_fascia.find((r) => r.fascia === k)?.media ?? 0)
+
+  // filtri dai grafici: un clic aggiunge o toglie il valore dal filtro della dimensione
+  type ListKey = 'dow' | 'fascia' | 'motivo' | 'genere' | 'eta' | 'nazionalita' | 'tipologia'
+  const toggleIn = (k: ListKey, v: string | number) => {
+    const cur = filters[k] as (string | number)[]
+    const next = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]
+    onFilters({ ...filters, [k]: k === 'dow' ? (next as number[]).sort() : next })
+  }
+  const filtro = (k: ListKey, label: (v: string | number) => string) => ({
+    attivo: filters[k].length ? (filters[k] as (string | number)[]).map(label).join(', ') : null,
+    onClear: () => onFilters({ ...filters, [k]: [] }),
+  })
+  const giornoAttivo = filters.periodo.length === 2 && filters.periodo[0] === filters.periodo[1] ? filters.periodo[0] : null
 
   const nodo = stats.kpi.nodo
   const linkA = selection?.type === 'link' ? selection.a : null
@@ -140,8 +171,16 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink }: 
       id: 'giornaliero',
       sezione: 'panoramica',
       render: () => (
-        <Card title="Andamento giornaliero" subtitle="Spostamenti totali per giorno · in grigio scuro il fine settimana">
+        <Card
+          title="Andamento giornaliero"
+          subtitle="Spostamenti totali per giorno · in grigio scuro il fine settimana"
+          filtro={{ attivo: giornoAttivo && fmtDate(giornoAttivo), onClear: () => onFilters({ ...filters, periodo: [] }) }}
+        >
           <LineDaily
+            onPick={(p) => {
+              const day = stats.giornaliero[p.dataIndex]?.giorno
+              if (day) onFilters({ ...filters, periodo: giornoAttivo === day ? [] : [day, day] })
+            }}
             labels={stats.giornaliero.map((d) => fmtDate(d.giorno, { day: 'numeric', month: 'numeric' }))}
             values={stats.giornaliero.map((d) => d.n)}
             weekend={stats.giornaliero.map((d) => d.dow >= 6)}
@@ -178,8 +217,9 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink }: 
       id: 'dow',
       sezione: 'comportamenti',
       render: () => (
-        <Card title="Giorno della settimana" subtitle="Spostamenti medi per giorno">
+        <Card title="Giorno della settimana" subtitle="Spostamenti medi per giorno" filtro={filtro('dow', (v) => DOW[Number(v) - 1].short)}>
           <BarChart
+            onPick={(p) => toggleIn('dow', p.dataIndex + 1)}
             labels={DOW.map((d) => d.short)}
             values={stats.per_dow.map((d) => d.media)}
             colors={stats.per_dow.map((d) => (d.dow >= 6 ? COLORS.secondary : COLORS.accent))}
@@ -191,8 +231,10 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink }: 
       id: 'fascia',
       sezione: 'comportamenti',
       render: () => (
-        <Card title="Fascia oraria di partenza" subtitle="Spostamenti medi giornalieri per fascia">
-          <BarChart labels={Object.keys(FASCE).map((k) => `${FASCE[k]}\n${fasceOre[k] ?? ''}`)} values={fasce} color={COLORS.accent} height={200} />
+        <Card title="Fascia oraria di partenza" subtitle="Spostamenti medi giornalieri per fascia" filtro={filtro('fascia', (v) => FASCE[v])}>
+          <BarChart
+            onPick={(p) => toggleIn('fascia', Object.keys(FASCE)[p.dataIndex])}
+            labels={Object.keys(FASCE).map((k) => `${FASCE[k]}\n${fasceOre[k] ?? ''}`)} values={fasce} color={COLORS.accent} height={200} />
         </Card>
       ),
     },
@@ -200,8 +242,16 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink }: 
       id: 'motivo',
       sezione: 'comportamenti',
       render: () => (
-        <Card title="Motivo dello spostamento" subtitle="Origine (righe) → destinazione (colonne): Casa = luogo di residenza, Lavoro = luogo di lavoro, Altro = luogo visitato">
+        <Card
+          title="Motivo dello spostamento"
+          subtitle="Origine (righe) → destinazione (colonne): Casa = luogo di residenza, Lavoro = luogo di lavoro, Altro = luogo visitato"
+          filtro={filtro('motivo', (v) => String(v).split('>').map((m) => MOTIVI[m]).join('→'))}
+        >
           <Heatmap
+            onPick={(p) => {
+              const [col, row] = p.value as number[]
+              toggleIn('motivo', `${MOTIVI_ORDER[row]}>${MOTIVI_ORDER[col]}`)
+            }}
             rows={MOTIVI_ORDER.map((m) => MOTIVI[m])}
             cols={MOTIVI_ORDER.map((m) => MOTIVI[m])}
             values={mot}
@@ -225,8 +275,9 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink }: 
       id: 'tipologia',
       sezione: 'comportamenti',
       render: () => (
-        <Card title="Tipologia di spostamento" subtitle="Spostamenti medi giornalieri">
+        <Card title="Tipologia di spostamento" subtitle="Spostamenti medi giornalieri" filtro={filtro('tipologia', (v) => TIPOLOGIE[v])}>
           <StackBar
+            onPick={(i) => toggleIn('tipologia', Object.keys(TIPOLOGIE)[i])}
             items={Object.entries(TIPOLOGIE).map(([k, label], i) => ({
               label,
               value: perDay(stats.tipologia[k] ?? 0),
@@ -240,8 +291,14 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink }: 
       id: 'genere',
       sezione: 'profili',
       render: () => (
-        <Card title="Genere" subtitle={naDemo > 0 ? `N/D: viaggiatori stranieri, senza profilo sociodemografico` : undefined}>
-          <Donut height={190}
+        <Card
+          title="Genere"
+          subtitle={naDemo > 0 ? `N/D: viaggiatori stranieri, senza profilo sociodemografico` : undefined}
+          filtro={filtro('genere', (v) => GENERI[v])}
+        >
+          <Donut
+            height={190}
+            onPick={(p) => toggleIn('genere', ['f', 'm', 'NA'][p.dataIndex])}
             items={[
               { name: GENERI.f, value: perDay(genere('f')), color: COLORS.purple },
               { name: GENERI.m, value: perDay(genere('m')), color: COLORS.accent },
@@ -255,8 +312,9 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink }: 
       id: 'eta',
       sezione: 'profili',
       render: () => (
-        <Card title="Età e genere" subtitle="Spostamenti medi giornalieri per fascia d'età">
+        <Card title="Età e genere" subtitle="Spostamenti medi giornalieri per fascia d'età" filtro={filtro('eta', (v) => etaLabel(String(v)))}>
           <GroupedBars
+            onPick={(p) => toggleIn('eta', ETA[p.dataIndex])}
             labels={ETA.filter((e) => e !== 'NA').map(etaLabel)}
             series={[
               { name: GENERI.f, values: etaBy('f'), color: COLORS.purple },
@@ -270,8 +328,9 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink }: 
       id: 'nazionalita',
       sezione: 'profili',
       render: () => (
-        <Card title="Nazionalità" subtitle="Spostamenti medi giornalieri">
+        <Card title="Nazionalità" subtitle="Spostamenti medi giornalieri" filtro={filtro('nazionalita', (v) => NAZIONALITA[v])}>
           <StackBar
+            onPick={(i) => toggleIn('nazionalita', Object.keys(NAZIONALITA)[i])}
             items={Object.entries(NAZIONALITA).map(([k, label], i) => ({
               label,
               value: perDay(stats.nazionalita[k] ?? 0),

@@ -407,6 +407,157 @@ function flows(d: Data, f: Filters, r: Result, limit: number) {
   }
 }
 
+
+// ------------------------------------------------------------------ export
+/** Campi esportabili, nello stesso ordine delle colonne del file. */
+const CAMPI = [
+  'origine', 'destinazione', 'giorno', 'giorno_settimana', 'fascia_oraria',
+  'genere', 'eta', 'nazionalita', 'tipologia', 'motivo_origine', 'motivo_destinazione',
+] as const
+type Campo = (typeof CAMPI)[number]
+const MAX_CAMPI = 4
+
+interface ExportResult {
+  campi: Campo[]
+  groups: Map<number, number>
+  totale: number
+  nDays: number
+  zoneIds: number[]
+}
+
+const exportCache = new Map<string, ExportResult>()
+
+/** Aggrega i dati filtrati sulle dimensioni scelte, con chiave numerica a radice mista (< 2^53). */
+function exportGroups(d: Data, f: Filters, campi: Campo[]): ExportResult {
+  const has = <T,>(list: T[], v: T) => list.length === 0 || list.includes(v)
+  const on = (c: Campo) => campi.includes(c)
+  const lvl = d.levels[f.livello]
+  const Z = lvl.ids.length
+
+  // parti della chiave derivate da ciascun byte di attributi; 0 dove il campo non è richiesto
+  const t1 = new Int32Array(N_P1).fill(-1)
+  for (let g = 0; g < d.days.length; g++)
+    for (let fa = 0; fa < 5; fa++) {
+      if (!(inPeriod(f, d.days[g]) && has(f.fascia, FASCE[fa]))) continue
+      const t = on('giorno') ? g : on('giorno_settimana') ? d.days[g].dow - 1 : 0
+      t1[g * 5 + fa] = t * 5 + (on('fascia_oraria') ? fa : 0)
+    }
+  const t2 = new Int32Array(N_P2).fill(-1)
+  for (let v = 0; v < N_P2; v++) {
+    const tp = v & 1, nz = (v >> 1) & 1, ge = (v >> 2) & 3, et = v >> 4
+    if (ge > 2 || et > 6) continue
+    if (!(has(f.tipologia, TIPOLOGIE[tp]) && has(f.nazionalita, NAZIONALITA[nz]) && has(f.genere, GENERI[ge]) && has(f.eta, ETA[et]))) continue
+    t2[v] = (on('tipologia') ? tp : 0) | (on('nazionalita') ? nz << 1 : 0) | (on('genere') ? ge << 2 : 0) | (on('eta') ? et << 4 : 0)
+  }
+  const t3 = new Int32Array(N_P3).fill(-1)
+  for (let v = 0; v < N_P3; v++) {
+    const mo = Math.floor(v / 3), md = v % 3
+    if (!(f.motivo.length === 0 || f.motivo.some(([x, y]) => x === MOTIVI[mo] && y === MOTIVI[md]))) continue
+    t3[v] = (on('motivo_origine') ? mo : 0) * 3 + (on('motivo_destinazione') ? md : 0)
+  }
+
+  const empty = (s: ZoneSel) => s.prov.size === 0 && s.zone.size === 0 && s.ace.size === 0
+  const sideOk = (sel: ZoneSel, a: number, c: number, p: number) =>
+    empty(sel) || sel.prov.has(p) || sel.zone.has(c) || sel.ace.has(a)
+  const { pzo, pzd, pStart, p1, p2, p3, n, zoneId, zoneComune, zoneProv } = d
+  const groups = new Map<number, number>()
+  let totale = 0
+
+  for (let p = 0; p < pzo.length; p++) {
+    const io = pzo[p], id = pzd[p]
+    if (!sideOk(f.origine, zoneId[io], zoneComune[io], zoneProv[io])) continue
+    if (!sideOk(f.destinazione, zoneId[id], zoneComune[id], zoneProv[id])) continue
+    const zk = (on('origine') ? lvl.ofAce[io] : 0) * Z + (on('destinazione') ? lvl.ofAce[id] : 0)
+    for (let r = pStart[p], end = pStart[p + 1]; r < end; r++) {
+      const k1 = t1[p1[r]], k2 = t2[p2[r]], k3 = t3[p3[r]]
+      if (k1 < 0 || k2 < 0 || k3 < 0) continue
+      const key = ((zk * N_P1 + k1) * N_P2 + k2) * N_P3 + k3
+      const v = n[r]
+      groups.set(key, (groups.get(key) ?? 0) + v)
+      totale += v
+    }
+  }
+  const nDays = d.days.filter((x) => inPeriod(f, x)).length || 1
+  return { campi, groups, totale, nDays, zoneIds: lvl.ids }
+}
+
+function exportFor(d: Data, f: Filters, campi: Campo[], q: URLSearchParams): ExportResult {
+  const k = new URLSearchParams(q)
+  for (const x of ['k', 'righe', 'limit', 'nodo', 'link']) k.delete(x)
+  k.sort()
+  const key = k.toString()
+  let r = exportCache.get(key)
+  if (!r) {
+    r = exportGroups(d, f, campi)
+    exportCache.set(key, r)
+    if (exportCache.size > 12) exportCache.delete(exportCache.keys().next().value!)
+  }
+  return r
+}
+
+function exportResponse(d: Data, f: Filters, q: URLSearchParams) {
+  const campi = split(q.get('campi')) as Campo[]
+  if (!campi.length) throw new BadRequest('seleziona almeno un campo')
+  if (campi.some((c) => !CAMPI.includes(c))) throw new BadRequest('campo non valido')
+  if (campi.length > MAX_CAMPI) throw new BadRequest(`al massimo ${MAX_CAMPI} campi per dataset`)
+  const soglia = Math.max(0, Number(q.get('k')) || 100)
+  const ordered = CAMPI.filter((c) => campi.includes(c))
+  const r = exportFor(d, f, ordered, q)
+
+  let gruppiEsportati = 0
+  let spostamentiEsportati = 0
+  for (const v of r.groups.values())
+    if (v >= soglia) {
+      gruppiEsportati++
+      spostamentiEsportati += v
+    }
+  const summary = {
+    campi: ordered,
+    soglia,
+    gruppi_totali: r.groups.size,
+    gruppi_esportati: gruppiEsportati,
+    spostamenti_totali: r.totale,
+    spostamenti_esportati: spostamentiEsportati,
+    perdita: r.totale ? 1 - spostamentiEsportati / r.totale : 0,
+    n_giorni: r.nDays,
+  }
+  if (q.get('righe') !== '1') return summary
+
+  // decodifica delle chiavi in righe con etichette leggibili
+  const names = d.names[f.livello]
+  const Z = r.zoneIds.length
+  const media = !ordered.includes('giorno')
+  const rows: (string | number)[][] = []
+  for (const [key, v] of r.groups) {
+    if (v < soglia) continue
+    const k3 = key % N_P3
+    const k2 = Math.floor(key / N_P3) % N_P2
+    const k1 = Math.floor(key / (N_P3 * N_P2)) % N_P1
+    const zk = Math.floor(key / (N_P3 * N_P2 * N_P1))
+    const t = Math.floor(k1 / 5)
+    const val: Record<Campo, string | number> = {
+      origine: names.get(r.zoneIds[Math.floor(zk / Z)]) ?? '',
+      destinazione: names.get(r.zoneIds[zk % Z]) ?? '',
+      giorno: d.days[t]?.iso ?? '',
+      giorno_settimana: DOW_LABELS[ordered.includes('giorno') ? d.days[t].dow - 1 : t],
+      fascia_oraria: FASCE[k1 % 5],
+      genere: GENERI[(k2 >> 2) & 3],
+      eta: ETA[k2 >> 4],
+      nazionalita: NAZIONALITA[(k2 >> 1) & 1],
+      tipologia: TIPOLOGIE[k2 & 1],
+      motivo_origine: MOTIVI[Math.floor(k3 / 3)],
+      motivo_destinazione: MOTIVI[k3 % 3],
+    }
+    const row: (string | number)[] = ordered.map((c) => val[c])
+    row.push(Math.round(v * 10) / 10)
+    if (media) row.push(Math.round((v / r.nDays) * 10) / 10)
+    rows.push(row)
+  }
+  rows.sort((a, b) => (b[ordered.length] as number) - (a[ordered.length] as number))
+  const header = [...ordered, 'spostamenti_periodo', ...(media ? ['spostamenti_medi_giorno'] : [])]
+  return { ...summary, header, rows }
+}
+
 async function handle(url: string) {
   const u = new URL(url, 'http://local')
   if (u.pathname === '/api/meta') {
@@ -415,6 +566,7 @@ async function handle(url: string) {
   }
   const d = await loadData()
   const f = parse(u.searchParams)
+  if (u.pathname === '/api/export') return exportResponse(d, f, u.searchParams)
   const r = resultFor(d, f, u.searchParams)
   if (u.pathname === '/api/stats') return stats(d, f, r)
   if (u.pathname === '/api/flows') {

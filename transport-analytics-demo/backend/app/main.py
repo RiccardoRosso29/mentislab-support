@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -30,6 +30,21 @@ def meta():
 @app.get("/api/stats")
 def stats(f: Filters = Depends(parse_filters)):
     return wh.stats(f)
+
+
+@app.get("/api/export")
+def export(
+    f: Filters = Depends(parse_filters),
+    campi: str = Query(..., description="campi separati da virgola (max 4)"),
+    k: float = Query(100, ge=0, description="soglia minima di spostamenti per gruppo"),
+    righe: bool = False,
+):
+    scelti = [c for c in campi.split(",") if c]
+    if not scelti or any(c not in wh.CAMPI for c in scelti):
+        raise HTTPException(400, "campi non validi")
+    if len(scelti) > wh.MAX_CAMPI:
+        raise HTTPException(400, f"al massimo {wh.MAX_CAMPI} campi per dataset")
+    return wh.export(f, scelti, k, righe)
 
 
 @app.get("/api/flows")

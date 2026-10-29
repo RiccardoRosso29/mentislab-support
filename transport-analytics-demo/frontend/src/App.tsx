@@ -7,6 +7,9 @@ import FilterBar from './components/FilterBar'
 import FlowMap, { type NodeInfo } from './components/FlowMap'
 import Sidebar from './components/Sidebar'
 import Playback, { buildFrames, type PlaybackState } from './components/Playback'
+import ExportModal from './components/ExportModal'
+import { IconDownload } from './components/icons'
+import { BASEMAP_DISPONIBILE, BASEMAPS, type Basemap } from './components/FlowMap'
 
 const EXTRA_REGION_OFFSET = 900_000
 // slider dei flussi su scala logaritmica: più precisione sui valori bassi
@@ -92,6 +95,8 @@ export default function App() {
   const [selection, setSelection] = useState<Selection>(initial.selection)
   const [limit, setLimit] = useState(initial.limit)
   const [panelOpen, setPanelOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
+  const [basemap, setBasemap] = useState<Basemap>('chiara')
   const [geo, setGeo] = useState<{ ace: any; comuni: any; province: any }>({ ace: null, comuni: null, province: null })
 
   const { data: meta, error: metaError } = useApi<Meta>('/api/meta', 0)
@@ -223,7 +228,13 @@ export default function App() {
             {fmtDate(meta.periodo.a, { day: 'numeric', month: 'long', year: 'numeric' })}
           </span>
         </div>
-        <ZoningSelect value={livello} onChange={changeLivello} />
+        <div className="topbar-actions">
+          <button className="export-btn" onClick={() => setExportOpen(true)}>
+            <IconDownload />
+            Esporta dati
+          </button>
+          <ZoningSelect value={livello} onChange={changeLivello} />
+        </div>
       </header>
 
       <FilterBar meta={meta} filters={filters} onChange={setFilters} />
@@ -236,6 +247,8 @@ export default function App() {
           nameOf={nameOf}
           fasceOre={fasceOre}
           onSelectLink={selectLink}
+          filters={filters}
+          onFilters={setFilters}
         />
         <section className="map-area">
           <FlowMap
@@ -248,6 +261,7 @@ export default function App() {
             onSelect={setSelection}
             extraRegionOffset={EXTRA_REGION_OFFSET}
             scale={pbActive ? pbScale : null}
+            basemap={basemap}
           />
 
           {pbActive ? (
@@ -259,12 +273,23 @@ export default function App() {
               onChange={updatePb}
             />
           ) : (
-            <button className="pb-open" onClick={() => updatePb({ open: true, playing: true, frame: 0 })}>
-              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
-                <path d="M7 4.5v15l13-7.5z" fill="currentColor" />
-              </svg>
-              Riproduci la giornata
-            </button>
+            <div className="map-bottom-left">
+              {BASEMAP_DISPONIBILE && (
+                <div className="basemap-switch" role="radiogroup" aria-label="Tipo di mappa">
+                  {BASEMAPS.map((b) => (
+                    <button key={b.id} role="radio" aria-checked={basemap === b.id} className={basemap === b.id ? 'on' : ''} onClick={() => setBasemap(b.id)}>
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button className="pb-open" onClick={() => updatePb({ open: true, playing: true, frame: 0 })}>
+                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
+                  <path d="M7 4.5v15l13-7.5z" fill="currentColor" />
+                </svg>
+                Riproduci la giornata
+              </button>
+            </div>
           )}
 
           {selection && (
@@ -344,6 +369,7 @@ export default function App() {
           )}
         </section>
       </main>
+      {exportOpen && <ExportModal meta={meta} filters={filters} livello={livello} onClose={() => setExportOpen(false)} />}
     </div>
   )
 }

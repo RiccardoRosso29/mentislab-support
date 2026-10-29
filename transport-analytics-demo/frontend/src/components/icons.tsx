@@ -21,6 +21,12 @@ export const IconReset = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
+export const IconDownload = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+  </svg>
+)
+
 export const IconCalendar = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <rect x="3" y="5" width="18" height="16" rx="2" />

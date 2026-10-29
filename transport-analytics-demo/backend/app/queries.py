@@ -182,6 +182,47 @@ class Warehouse:
         n_days = self._n_days(f)
         return [dict(o=r[0], o_nome=r[1], d=r[2], d_nome=r[3], n=r[4], media=r[4] / n_days) for r in rows]
 
+    # ---------------------------------------------------------------- export
+    CAMPI = ("origine", "destinazione", "giorno", "giorno_settimana", "fascia_oraria",
+             "genere", "eta", "nazionalita", "tipologia", "motivo_origine", "motivo_destinazione")
+    MAX_CAMPI = 4
+
+    def export(self, f: Filters, campi: list[str], soglia: float, righe: bool) -> dict:
+        """Dataset aggregato sui campi scelti; i gruppi con meno di `soglia` spostamenti sono rimossi."""
+        campi = [c for c in self.CAMPI if c in campi]
+        z = self._names_cte(f)
+        expr = {
+            "origine": "zo.nome", "destinazione": "zd.nome", "giorno": "strftime(giorno, '%Y-%m-%d')",
+            "giorno_settimana": "dow", "fascia_oraria": "fascia::VARCHAR", "genere": "genere::VARCHAR",
+            "eta": "eta::VARCHAR", "nazionalita": "nazionalita::VARCHAR", "tipologia": "tipologia::VARCHAR",
+            "motivo_origine": "mo::VARCHAR", "motivo_destinazione": "md::VARCHAR",
+        }
+        where, params = f.where(with_selection=False)
+        cols = ", ".join(f"{expr[c]} AS {c}" for c in campi)
+        rows = self._q(f"""
+            WITH z AS ({z})
+            SELECT {cols}, sum(n) AS n FROM fact_od
+            LEFT JOIN z zo ON zo.id = fact_od.{f.zo} LEFT JOIN z zd ON zd.id = fact_od.{f.zd}
+            {where} GROUP BY ALL ORDER BY n DESC
+        """, params)
+        n_days = self._n_days(f)
+        totale = sum(r[-1] for r in rows)
+        kept = [r for r in rows if r[-1] >= soglia]
+        esportati = sum(r[-1] for r in kept)
+        out = dict(campi=campi, soglia=soglia, gruppi_totali=len(rows), gruppi_esportati=len(kept),
+                   spostamenti_totali=totale, spostamenti_esportati=esportati,
+                   perdita=(1 - esportati / totale) if totale else 0.0, n_giorni=n_days)
+        if righe:
+            media = "giorno" not in campi
+            dow = campi.index("giorno_settimana") if "giorno_settimana" in campi else None
+            out["header"] = campi + ["spostamenti_periodo"] + (["spostamenti_medi_giorno"] if media else [])
+            out["rows"] = [
+                [DOW_LABELS[v - 1] if i == dow else v for i, v in enumerate(r[:-1])]
+                + [round(r[-1], 1)] + ([round(r[-1] / n_days, 1)] if media else [])
+                for r in kept
+            ]
+        return out
+
     # ----------------------------------------------------------------- flows
     def flows(self, f: Filters, limit: int) -> dict:
         return self.cache.get_or_compute(("flows", f.key(), limit), lambda: self._flows(f, limit))

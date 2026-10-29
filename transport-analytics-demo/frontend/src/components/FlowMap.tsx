@@ -30,9 +30,35 @@ interface Props {
   extraRegionOffset: number
   /** Massimi fissi per archi e nodi: durante il playback la scala non cambia da un fotogramma all'altro. */
   scale?: { arc: number; node: number } | null
+  basemap?: Basemap
 }
 
-const BASEMAP = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
+export type Basemap = 'chiara' | 'strade' | 'satellite'
+export const BASEMAPS: { id: Basemap; label: string }[] = [
+  { id: 'chiara', label: 'Chiara' },
+  { id: 'strade', label: 'Strade' },
+  { id: 'satellite', label: 'Satellite' },
+]
+/** La mappa di base usa tessere esterne: esclusa solo dove l'hosting le blocca (Artifact claude.ai). */
+export const BASEMAP_DISPONIBILE = !isStatic || import.meta.env.VITE_BASEMAP === '1'
+
+const STYLES: Record<Basemap, string | object> = {
+  chiara: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+  strade: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+  satellite: {
+    version: 8,
+    sources: {
+      esri: {
+        type: 'raster',
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tileSize: 256,
+        maxzoom: 19,
+        attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+      },
+    },
+    layers: [{ id: 'esri', type: 'raster', source: 'esri' }],
+  },
+}
 const INITIAL_VIEW = { longitude: 7.95, latitude: 45.05, zoom: 7.3, pitch: 0, bearing: 0 }
 
 const OUT: RGBA = [242, 140, 40, 220]
@@ -68,7 +94,7 @@ interface Arc {
   width: number
 }
 
-export default function FlowMap({ livello, flows, nodes, aree, province, selection, onSelect, extraRegionOffset, scale }: Props) {
+export default function FlowMap({ livello, flows, nodes, aree, province, selection, onSelect, extraRegionOffset, scale, basemap = 'chiara' }: Props) {
   // zoom arrotondato a 0,5: basta per distanziare le etichette senza ricalcolarle a ogni frame
   const [zoom, setZoom] = useState(INITIAL_VIEW.zoom)
 
@@ -145,9 +171,12 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
   // aree neutre: il volume è già nei nodi e nei flussi; il colore evidenzia solo le zone selezionate
   const fillFor = (id: number): RGBA => {
     if (selectedIds.has(id)) return [242, 140, 40, 90]
+    // sopra strade e satellite le aree restano quasi trasparenti (ma cliccabili)
+    if (BASEMAP_DISPONIBILE && basemap !== 'chiara') return [255, 255, 255, basemap === 'satellite' ? 1 : 30]
     return nodeTotals.has(id) ? [255, 255, 255, 110] : [255, 255, 255, 40]
   }
 
+  const sat = BASEMAP_DISPONIBILE && basemap === 'satellite'
   const layers = [
     new GeoJsonLayer({
       id: 'province',
@@ -155,14 +184,14 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
       stroked: true,
       filled: true,
       pickable: true,
-      getLineColor: (f: any) => (f.properties.piemonte ? [60, 60, 60, 200] : [120, 120, 120, 120]),
+      getLineColor: (f: any) => (sat ? [255, 255, 255, f.properties.piemonte ? 230 : 140] : f.properties.piemonte ? [60, 60, 60, 200] : [120, 120, 120, 120]),
       getLineWidth: (f: any) => (f.properties.piemonte ? 1.6 : 0.8),
       lineWidthUnits: 'pixels',
       getFillColor: (f: any) => {
         const id = zoneId(f, 'provincia')
         return livello === 'provincia' || !f.properties.piemonte ? fillFor(id) : [0, 0, 0, 0]
       },
-      updateTriggers: { getFillColor: [livello, flows, selection] },
+      updateTriggers: { getFillColor: [livello, flows, selection, basemap], getLineColor: [basemap] },
     }),
     livello !== 'provincia' &&
       new GeoJsonLayer({
@@ -173,11 +202,11 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
         pickable: true,
         autoHighlight: true,
         highlightColor: [242, 140, 40, 70],
-        getLineColor: [150, 150, 150, 90],
+        getLineColor: sat ? [255, 255, 255, 110] : [150, 150, 150, 90],
         getLineWidth: 0.5,
         lineWidthUnits: 'pixels',
         getFillColor: (f: any) => fillFor(f.properties.id),
-        updateTriggers: { getFillColor: [flows, selection, livello] },
+        updateTriggers: { getFillColor: [flows, selection, livello, basemap], getLineColor: [basemap] },
       }),
     new PathLayer<Arc>({
       id: 'flussi',
@@ -337,8 +366,7 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
           return text ? { text, className: 'deck-tip' } : null
         }}
       >
-        {/* la mappa di base serve tessere esterne: esclusa solo dove l'hosting le blocca (Artifact) */}
-        {(!isStatic || import.meta.env.VITE_BASEMAP === '1') && <MapGL mapStyle={BASEMAP} reuseMaps />}
+        {BASEMAP_DISPONIBILE && <MapGL mapStyle={STYLES[basemap] as string} />}
       </DeckGL>
     </div>
   )
