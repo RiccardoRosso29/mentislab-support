@@ -1,0 +1,10 @@
+# dati e credenziali: mai nel repository
+data/
+*.duckdb
+*.json.key
+*service-account*.json
+.env
+
+__pycache__/
+*.pyc
+.venv/

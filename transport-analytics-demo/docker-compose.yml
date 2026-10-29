@@ -1,0 +1,26 @@
+services:
+  # Job una tantum: scarica l'estrazione da GCS e costruisce il warehouse in ./data
+  pipeline:
+    build: .
+    profiles: ["pipeline"]
+    working_dir: /app
+    command: sh -c "python pipeline/fetch_data.py && python pipeline/build_warehouse.py"
+    environment:
+      DATA_DIR: /data
+      GCS_BUCKET: ${GCS_BUCKET:-transport_analytics}
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/gcp-key.json
+    volumes:
+      - ./data:/data
+      - ${GCP_KEY_FILE:-./gcp-key.json}:/secrets/gcp-key.json:ro
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATA_DIR: /data
+    volumes:
+      - ./data:/data:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s

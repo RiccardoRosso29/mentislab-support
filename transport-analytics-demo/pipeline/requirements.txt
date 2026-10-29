@@ -1,0 +1,3 @@
+duckdb==2.0.0
+shapely==2.2.0
+google-cloud-storage==3.17.1
