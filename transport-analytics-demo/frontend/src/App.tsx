@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { EMPTY_FILTERS, buildQuery, getJSON, type Filters, type Flows, type Livello, type Meta, type Selection, type Stats } from './api'
+import { EMPTY_FILTERS, buildQuery, getJSON, type Filters, type Flows, type Livello, type Meta, type Relazioni, type Selection, type Stats } from './api'
 import { useApi, useClickOutside } from './hooks'
 import { isStatic } from './local/client'
 import { COLORS, fmt, fmtDate } from './labels'
@@ -8,6 +8,7 @@ import FlowMap, { type NodeInfo } from './components/FlowMap'
 import Sidebar from './components/Sidebar'
 import Playback, { buildFrames, type PlaybackState } from './components/Playback'
 import ExportModal from './components/ExportModal'
+import RelazioniModal from './components/RelazioniModal'
 import { IconDownload } from './components/icons'
 import { BASEMAP_DISPONIBILE, type Basemap } from './components/FlowMap'
 import BasemapPicker from './components/BasemapPicker'
@@ -126,6 +127,47 @@ export default function App() {
   }, [query, livello, limit])
 
   const stats = useApi<Stats>(meta ? `/api/stats?${query}` : null)
+  // profilo medio (stessi filtri, senza selezione) per i benchmark dei grafici
+  const bench = useApi<Stats>(meta && selection ? `/api/stats?${buildQuery(livello, filters, null)}` : null)
+  // relazioni sopra soglia: della zona selezionata, oppure di tutta l'area (classifica generale o posizione di una relazione)
+  const rel = useApi<Relazioni>(
+    meta ? `/api/relazioni?${buildQuery(livello, filters, selection?.type === 'nodo' ? selection : null)}&k=100` : null,
+  )
+  const [relOpen, setRelOpen] = useState(false)
+  const openRel = useCallback(() => setRelOpen(true), [])
+
+  // barra laterale ridimensionabile entro limiti in cui i grafici restano leggibili
+  const SB_MIN = 380
+  const SB_MAX = 640
+  const [sbWidth, setSbWidth] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem('ta-sidebar-w'))
+      return v >= SB_MIN && v <= SB_MAX ? v : 440
+    } catch {
+      return 440
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('ta-sidebar-w', String(sbWidth))
+    } catch {
+      /* archiviazione non disponibile: la larghezza vale solo per la sessione */
+    }
+  }, [sbWidth])
+  const startResize = (e: React.PointerEvent) => {
+    e.preventDefault()
+    const x0 = e.clientX
+    const w0 = sbWidth
+    const move = (ev: PointerEvent) => setSbWidth(Math.min(SB_MAX, Math.max(SB_MIN, w0 + ev.clientX - x0)))
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      document.body.classList.remove('resizing')
+    }
+    document.body.classList.add('resizing')
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
 
   // ---- playback: la mappa scorre per fasce orarie (giornata tipo) o per giorno e fascia (periodo)
   const [pb, setPb] = useState<PlaybackState>({ open: false, playing: false, mode: 'tipo', frame: 0, speed: 1 })
@@ -215,7 +257,7 @@ export default function App() {
 
   const f = flows.data
   return (
-    <div className="app">
+    <div className="app" style={{ '--sidebar-w': `${sbWidth}px` } as React.CSSProperties}>
       <header className="topbar">
         <div className="brand">
           <img src="logo-windtre-business.png" alt="WINDTRE Business" className="logo-w3" />
@@ -249,6 +291,26 @@ export default function App() {
           onSelectLink={selectLink}
           filters={filters}
           onFilters={setFilters}
+          bench={selection ? bench.data : null}
+          rel={rel.data}
+          onOpenRelazioni={openRel}
+        />
+        <div
+          className="sb-resizer"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Ridimensiona il pannello"
+          aria-valuemin={SB_MIN}
+          aria-valuemax={SB_MAX}
+          aria-valuenow={sbWidth}
+          tabIndex={0}
+          onPointerDown={startResize}
+          onDoubleClick={() => setSbWidth(440)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowLeft') setSbWidth((w) => Math.max(SB_MIN, w - 20))
+            if (e.key === 'ArrowRight') setSbWidth((w) => Math.min(SB_MAX, w + 20))
+          }}
+          title="Trascina per ridimensionare · doppio clic per ripristinare"
         />
         <section className="map-area">
           <FlowMap
@@ -363,6 +425,15 @@ export default function App() {
           )}
         </section>
       </main>
+      {relOpen && rel.data && (
+        <RelazioniModal
+          rel={rel.data}
+          titolo={selection?.type === 'nodo' ? `Relazioni di ${nameOf(selection.id)}` : 'Tutte le relazioni dell’area di studio'}
+          selection={selection}
+          onSelectLink={selectLink}
+          onClose={() => setRelOpen(false)}
+        />
+      )}
       {exportOpen && <ExportModal meta={meta} filters={filters} livello={livello} onClose={() => setExportOpen(false)} />}
     </div>
   )

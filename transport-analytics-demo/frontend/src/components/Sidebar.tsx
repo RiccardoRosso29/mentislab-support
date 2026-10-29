@@ -1,5 +1,5 @@
 import { memo, useState, type ReactNode } from 'react'
-import type { Filters, Selection, Stats } from '../api'
+import type { Filters, Relazioni, Selection, Stats } from '../api'
 import {
   COLORS,
   DOW,
@@ -17,7 +17,8 @@ import {
 } from '../labels'
 import { BarChart, Donut, GroupedBars, Heatmap, LineDaily, StackBar } from './Charts'
 
-const SEZIONI = { panoramica: 'Panoramica', comportamenti: 'Comportamenti', profili: 'Profili' } as const
+// i motivi di spostamento sono un modulo commerciale a sé: sezione separata, sempre per ultima
+const SEZIONI = { panoramica: 'Panoramica', comportamenti: 'Comportamenti', profili: 'Profili', motivi: 'Motivi' } as const
 type Sezione = keyof typeof SEZIONI
 const ALL = new Set(Object.keys(SEZIONI) as Sezione[])
 
@@ -37,6 +38,79 @@ interface Props {
   onSelectLink: (a: number, b: number) => void
   filters: Filters
   onFilters: (f: Filters) => void
+  /** statistiche senza la selezione sulla mappa: profilo medio usato come benchmark */
+  bench: Stats | null
+  rel: Relazioni | null
+  onOpenRelazioni: () => void
+}
+
+/** Tabella delle relazioni: classifica generale, relazioni della zona, o posizione della relazione scelta. */
+function OdTable({
+  rel,
+  selection,
+  onSelectLink,
+  onOpenAll,
+}: {
+  rel: Relazioni | null
+  selection: Selection
+  onSelectLink: (a: number, b: number) => void
+  onOpenAll: () => void
+}) {
+  if (!rel) return <p className="sb-empty">Caricamento…</p>
+  const list = rel.relazioni
+  if (!list.length) return <p className="sb-empty">Nessuna relazione tra zone diverse sopra la soglia di {rel.soglia} spostamenti.</p>
+
+  type Row = { r: (typeof list)[number]; rank: number } | 'gap'
+  let rows: Row[]
+  const isSel = (x: (typeof list)[number]) =>
+    selection?.type === 'link' && ((x.o === selection.a && x.d === selection.b) || (x.o === selection.b && x.d === selection.a))
+  if (selection?.type === 'link') {
+    // prima e ultima come riferimento, più le relazioni attorno a quella selezionata
+    const keep = new Set<number>([0, list.length - 1])
+    list.forEach((x, i) => isSel(x) && [i - 2, i - 1, i, i + 1, i + 2].forEach((k) => k >= 0 && k < list.length && keep.add(k)))
+    const idx = [...keep].sort((a, b) => a - b)
+    rows = []
+    idx.forEach((k, n) => {
+      if (n > 0 && k - idx[n - 1] > 1) rows.push('gap')
+      rows.push({ r: list[k], rank: k + 1 })
+    })
+  } else rows = list.slice(0, 10).map((r, i) => ({ r, rank: i + 1 }))
+
+  return (
+    <>
+      <table className="od-table">
+        <thead>
+          <tr>
+            <th className="idx">#</th>
+            <th>Origine → destinazione</th>
+            <th className="num">Medi / giorno</th>
+            <th className="num">Quota</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) =>
+            row === 'gap' ? (
+              <tr key={`gap-${i}`} className="gap">
+                <td colSpan={4}>⋯</td>
+              </tr>
+            ) : (
+              <tr key={`${row.r.o}-${row.r.d}`} className={isSel(row.r) ? 'sel' : ''} onClick={() => onSelectLink(row.r.o, row.r.d)}>
+                <td className="idx">{fmt(row.rank)}</td>
+                <td>
+                  {row.r.o_nome} <span className="arrow">→</span> {row.r.d_nome}
+                </td>
+                <td className="num">{fmt(row.r.media)}</td>
+                <td className="num muted">{fmtPct(row.r.n / rel.totale)}</td>
+              </tr>
+            ),
+          )}
+        </tbody>
+      </table>
+      <button className="od-all" onClick={onOpenAll}>
+        Vedi tutte le {fmt(list.length)} relazioni
+      </button>
+    </>
+  )
 }
 
 interface CardProps {
@@ -77,7 +151,7 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
   )
 }
 
-function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, filters, onFilters }: Props) {
+function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, filters, onFilters, bench, rel, onOpenRelazioni }: Props) {
   const [focus, setFocus] = useState<Set<Sezione>>(ALL)
   // con tutte le sezioni attive il primo clic isola la sezione; svuotando la selezione si torna a tutte
   const toggle = (k: Sezione) =>
@@ -98,6 +172,20 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
   // I grafici interattivi usano le distribuzioni "cross": ognuna ignora il filtro del proprio grafico,
   // così i valori non selezionati restano visibili e quelli scelti sono solo evidenziati.
   const cx = stats.cross
+  // Benchmark (solo con una zona o relazione selezionata): profilo medio dell'area di studio con gli stessi
+  // filtri, riportato sul totale della selezione. Mostra come sarebbe la selezione se si comportasse come la media.
+  const bx = selection && bench ? bench.cross : null
+  const scaled = (sel: (number | null)[], ref: (number | null)[]) => {
+    const st = sel.reduce<number>((s, v) => s + (v ?? 0), 0)
+    const rt = ref.reduce<number>((s, v) => s + (v ?? 0), 0)
+    return rt > 0 ? ref.map((v) => (v == null ? null : (v / rt) * st)) : undefined
+  }
+  const shareFirst = (rec: Record<string, number> | undefined, keys: string[]) => {
+    if (!rec) return null
+    const t = keys.reduce((s, k) => s + (rec[k] ?? 0), 0)
+    return t > 0 ? (rec[keys[0]] ?? 0) / t : null
+  }
+  const benchNote = bx ? <p className="bench-note"><i /> Profilo medio dell’area di studio, riportato sul totale della selezione</p> : null
   const genereTot = (g: string) => cx.genere[g] ?? 0
   const etaBy = (g: string) => ETA.filter((e) => e !== 'NA').map((e) => perDay(cx.eta.find((r) => r.genere === g && r.eta === e)?.n ?? 0))
   const naDemo = genereTot('NA')
@@ -197,32 +285,27 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
             labels={cx.giornaliero.map((d) => fmtDate(d.giorno, { day: 'numeric', month: 'numeric' }))}
             values={cx.giornaliero.map((d) => d.n)}
             weekend={cx.giornaliero.map((d) => d.dow >= 6)}
+            bench={bx ? scaled(cx.giornaliero.map((d) => d.n), bx.giornaliero.map((d) => d.n)) : undefined}
           />
+          {benchNote}
         </Card>
       ),
     },
     {
       id: 'top_od',
       sezione: 'panoramica',
-      show: selection?.type !== 'link',
       render: () => (
-        <Card title="Principali relazioni OD" subtitle="Spostamenti medi giornalieri · clic per selezionare">
-          {stats.top_od.length === 0 && (
-            <p className="sb-empty">Nessuna relazione tra zone diverse con i filtri attivi: gli spostamenti sono tutti interni alle zone.</p>
-          )}
-          <table className="od-table">
-            <tbody>
-              {stats.top_od.map((r, i) => (
-                <tr key={`${r.o}-${r.d}`} onClick={() => onSelectLink(r.o, r.d)}>
-                  <td className="idx">{i + 1}</td>
-                  <td>
-                    {r.o_nome} <span className="arrow">→</span> {r.d_nome}
-                  </td>
-                  <td className="num">{fmt(r.media)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <Card
+          title={selection?.type === 'nodo' ? 'Relazioni della zona' : selection?.type === 'link' ? 'Posizione nella classifica' : 'Principali relazioni OD'}
+          subtitle={
+            selection?.type === 'nodo'
+              ? 'Relazioni con origine o destinazione nella zona selezionata'
+              : selection?.type === 'link'
+                ? 'La relazione selezionata tra tutte quelle dell’area di studio'
+                : 'Spostamenti medi giornalieri · clic su una riga per selezionarla'
+          }
+        >
+          <OdTable rel={rel} selection={selection} onSelectLink={onSelectLink} onOpenAll={onOpenRelazioni} />
         </Card>
       ),
     },
@@ -237,7 +320,9 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
             labels={DOW.map((d) => d.short)}
             values={cx.per_dow.map((d) => d.media)}
             colors={cx.per_dow.map((d) => (d.dow >= 6 ? COLORS.secondary : COLORS.accent))}
+            bench={bx ? scaled(cx.per_dow.map((d) => d.media), bx.per_dow.map((d) => d.media)) : undefined}
           />
+          {benchNote}
         </Card>
       ),
     },
@@ -249,13 +334,19 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
           <BarChart
             onPick={(p) => choose('fascia', Object.keys(FASCE)[p.dataIndex], p.multi)}
             highlight={hl('fascia', (i) => Object.keys(FASCE)[i])}
-            labels={Object.keys(FASCE).map((k) => `${FASCE[k]}\n${fasceOre[k] ?? ''}`)} values={fasce} color={COLORS.accent} height={200} />
+            labels={Object.keys(FASCE).map((k) => `${FASCE[k]}\n${fasceOre[k] ?? ''}`)}
+            values={fasce}
+            color={COLORS.accent}
+            height={200}
+            bench={bx ? scaled(fasce, Object.keys(FASCE).map((k) => bx.per_fascia.find((r) => r.fascia === k)?.media ?? 0)) : undefined}
+          />
+          {benchNote}
         </Card>
       ),
     },
     {
       id: 'motivo',
-      sezione: 'comportamenti',
+      sezione: 'motivi',
       render: () => (
         <Card
           title="Motivo dello spostamento"
@@ -300,6 +391,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
               value: perDay(cx.tipologia[k] ?? 0),
               color: i ? COLORS.secondary : COLORS.accent,
             }))}
+            benchShare={bx ? shareFirst(bx.tipologia, Object.keys(TIPOLOGIE)) : null}
           />
         </Card>
       ),
@@ -356,6 +448,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
               value: perDay(cx.nazionalita[k] ?? 0),
               color: i ? COLORS.secondary : COLORS.accent,
             }))}
+            benchShare={bx ? shareFirst(bx.nazionalita, Object.keys(NAZIONALITA)) : null}
           />
         </Card>
       ),

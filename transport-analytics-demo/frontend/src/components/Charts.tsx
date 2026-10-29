@@ -39,6 +39,19 @@ export interface Pick {
 
 // opacità degli elementi non selezionati quando un grafico ha una selezione attiva
 const DIM = 0.28
+
+/** Serie del benchmark: un trattino sopra ogni barra, al valore atteso con il profilo medio. */
+const benchSeries = (bench: (number | null)[], width: number) => ({
+  type: 'scatter' as const,
+  name: 'Profilo medio',
+  data: bench,
+  symbol: 'rect',
+  symbolSize: [width, 2.5],
+  itemStyle: { color: COLORS.text },
+  z: 10,
+  silent: false,
+  tooltip: { valueFormatter: (v: unknown) => fmt(v as number) },
+})
 type OnPick = (p: Pick) => void
 
 export function Chart({ option, height = 180, onPick }: { option: EChartsOption; height?: number; onPick?: OnPick }) {
@@ -76,6 +89,7 @@ export function BarChart({
   height,
   highlight,
   onPick,
+  bench,
 }: {
   labels: string[]
   values: (number | null)[]
@@ -84,6 +98,7 @@ export function BarChart({
   height?: number
   highlight?: (i: number) => boolean
   onPick?: OnPick
+  bench?: (number | null)[]
 }) {
   return (
     <Chart
@@ -96,6 +111,7 @@ export function BarChart({
         series: [
           {
             type: 'bar',
+            name: bench ? 'Selezione' : undefined,
             barMaxWidth: 34,
             data: values.map((v, i) => ({
               value: v,
@@ -105,8 +121,9 @@ export function BarChart({
                 borderRadius: [2, 2, 0, 0],
               },
             })),
-            label: { show: labels.length <= 7, position: 'top', formatter: (p) => fmtCompact(p.value as number), fontSize: 11, color: COLORS.muted },
+            label: { show: labels.length <= 7 && !bench, position: 'top', formatter: (p) => fmtCompact(p.value as number), fontSize: 11, color: COLORS.muted },
           },
+          ...(bench ? [benchSeries(bench, 30)] : []),
         ],
       }}
     />
@@ -242,6 +259,7 @@ export function LineDaily({
   height = 170,
   onPick,
   selected,
+  bench,
 }: {
   labels: string[]
   values: number[]
@@ -249,6 +267,7 @@ export function LineDaily({
   height?: number
   onPick?: OnPick
   selected?: (i: number) => boolean
+  bench?: (number | null)[]
 }) {
   return (
     <Chart
@@ -260,12 +279,14 @@ export function LineDaily({
         series: [
           {
             type: 'bar',
+            name: bench ? 'Selezione' : undefined,
             barMaxWidth: 18,
             data: values.map((v, i) => ({
               value: v,
               itemStyle: { color: weekend[i] ? COLORS.secondary : COLORS.accent, opacity: selected && !selected(i) ? DIM : 1 },
             })),
           },
+          ...(bench ? [benchSeries(bench, 16)] : []),
         ],
       }}
     />
@@ -277,10 +298,13 @@ export function StackBar({
   items,
   onPick,
   selected,
+  benchShare,
 }: {
   items: { label: string; value: number; color: string }[]
   onPick?: (i: number, multi: boolean) => void
   selected?: (i: number) => boolean
+  /** quota del primo elemento nel profilo medio: segnata come riferimento sulla barra */
+  benchShare?: number | null
 }) {
   const total = items.reduce((s, i) => s + i.value, 0)
   const [tip, setTip] = useState<{ i: number; x: number; w: number } | null>(null)
@@ -306,6 +330,11 @@ export function StackBar({
               {it.value / total > 0.08 ? fmtPct(it.value / total) : ''}
             </div>
           ) : null,
+        )}
+        {benchShare != null && (
+          <span className="stack-bench" style={{ left: `${benchShare * 100}%` }} title={`Profilo medio: ${fmtPct(benchShare)} ${items[0].label}`}>
+            <i>media {fmtPct(benchShare)}</i>
+          </span>
         )}
         {tip && items[tip.i] && (
           <div

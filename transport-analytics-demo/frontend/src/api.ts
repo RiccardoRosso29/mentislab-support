@@ -90,6 +90,24 @@ export interface Stats {
   n_giorni: number
 }
 
+export interface Relazione {
+  o: number
+  o_nome: string
+  d: number
+  d_nome: string
+  n: number
+  media: number
+}
+
+/** Relazioni tra zone diverse sopra la soglia di anonimizzazione, in ordine decrescente. */
+export interface Relazioni {
+  soglia: number
+  n_giorni: number
+  totale: number
+  sotto_soglia: number
+  relazioni: Relazione[]
+}
+
 export interface Flows {
   livello: Livello
   n_giorni: number

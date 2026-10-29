@@ -380,6 +380,29 @@ function stats(d: Data, f: Filters, r: Result) {
   }
 }
 
+/** Tutte le relazioni tra zone diverse sopra la soglia di anonimizzazione (spostamenti nel periodo), in ordine decrescente. */
+function relazioni(d: Data, f: Filters, r: Result, soglia: number) {
+  const ids = d.levels[f.livello].ids
+  const names = d.names[f.livello]
+  const list: { o: number; d: number; n: number }[] = []
+  let sotto = 0
+  for (const [k, v] of r.pairs) {
+    const o = ids[Math.floor(k / KEY)], de = ids[k % KEY]
+    if (o === de) continue
+    if (v >= soglia) list.push({ o, d: de, n: v })
+    else sotto++
+  }
+  list.sort((a, b) => b.n - a.n)
+  const totale = list.reduce((s, x) => s + x.n, 0)
+  return {
+    soglia,
+    n_giorni: r.nDays,
+    totale,
+    sotto_soglia: sotto,
+    relazioni: list.map((x) => ({ o: x.o, o_nome: names.get(x.o) ?? '', d: x.d, d_nome: names.get(x.d) ?? '', n: x.n, media: x.n / r.nDays })),
+  }
+}
+
 /**
  * Distribuzioni per i grafici interattivi: ogni grafico applica tutti i filtri tranne il proprio,
  * così i valori non selezionati restano visibili (evidenziati solo quelli scelti).
@@ -654,6 +677,7 @@ async function handle(url: string) {
   if (u.pathname === '/api/export') return exportResponse(d, f, u.searchParams)
   const r = resultFor(d, f, u.searchParams)
   if (u.pathname === '/api/stats') return stats(d, f, r)
+  if (u.pathname === '/api/relazioni') return relazioni(d, f, r, Math.max(0, Number(u.searchParams.get('k')) || 100))
   if (u.pathname === '/api/flows') {
     const limit = Math.min(3000, Math.max(10, Number(u.searchParams.get('limit')) || 300))
     return flows(d, f, r, limit)

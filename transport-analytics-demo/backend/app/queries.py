@@ -219,6 +219,25 @@ class Warehouse:
             return "SELECT id, nome, prov_nome AS sub FROM dim_zona"
         return "SELECT id, nome, regione AS sub FROM dim_provincia"
 
+    def relazioni(self, f: Filters, soglia: float) -> dict:
+        """Relazioni tra zone diverse con almeno `soglia` spostamenti nel periodo, in ordine decrescente."""
+        where, params = f.where()
+        cond = f"{f.zo} <> {f.zd}"
+        where = f"{where} AND {cond}" if where else f"WHERE {cond}"
+        rows = self._q(f"""
+            WITH p AS (SELECT {f.zo} AS o, {f.zd} AS d, sum(n) AS n FROM fact_od {where} GROUP BY ALL),
+                 z AS ({self._names_cte(f)})
+            SELECT p.o, zo.nome, p.d, zd.nome, p.n FROM p
+            LEFT JOIN z zo ON zo.id = p.o LEFT JOIN z zd ON zd.id = p.d
+            ORDER BY p.n DESC
+        """, params)
+        n_days = self._n_days(f)
+        kept = [r for r in rows if r[4] >= soglia]
+        return dict(
+            soglia=soglia, n_giorni=n_days, totale=sum(r[4] for r in kept), sotto_soglia=len(rows) - len(kept),
+            relazioni=[dict(o=r[0], o_nome=r[1], d=r[2], d_nome=r[3], n=r[4], media=r[4] / n_days) for r in kept],
+        )
+
     def _top_od(self, f: Filters, limit: int = 10) -> list[dict]:
         where, params = f.where()
         cond = f"{f.zo} <> {f.zd}"

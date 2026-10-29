@@ -45,6 +45,11 @@ def export(
     return wh.export(f, scelti, k, righe)
 
 
+@app.get("/api/relazioni")
+def relazioni(f: Filters = Depends(parse_filters), k: float = Query(100, ge=0)):
+    return wh.relazioni(f, k)
+
+
 @app.get("/api/flows")
 def flows(f: Filters = Depends(parse_filters), limit: int = Query(300, ge=10, le=3000)):
     return wh.flows(f, limit)
