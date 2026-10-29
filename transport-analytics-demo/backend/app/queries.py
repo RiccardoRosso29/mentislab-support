@@ -147,7 +147,59 @@ class Warehouse:
             nazionalita=nazionalita,
             tipologia=tipologia,
             top_od=self._top_od(f),
+            cross=self._cross(f),
             n_giorni=n_days,
+        )
+
+    def _cross(self, f: Filters) -> dict:
+        """Distribuzioni dei grafici interattivi: ognuna applica tutti i filtri tranne il proprio."""
+        where, params = f.where(attributes=False)
+        rows = self._q(f"""
+            SELECT giorno, dow, fascia::VARCHAR, tipologia::VARCHAR, nazionalita::VARCHAR, genere::VARCHAR,
+                   eta::VARCHAR, mo::VARCHAR, md::VARCHAR, sum(n)
+            FROM fact_od {where} GROUP BY ALL
+        """, params)
+        ok = {
+            "date": lambda r: (not f.da or r[0] >= f.da) and (not f.a or r[0] <= f.a),
+            "dow": lambda r: not f.dow or r[1] in f.dow,
+            "fascia": lambda r: not f.fascia or r[2] in f.fascia,
+            "tip": lambda r: not f.tipologia or r[3] in f.tipologia,
+            "naz": lambda r: not f.nazionalita or r[4] in f.nazionalita,
+            "gen": lambda r: not f.genere or r[5] in f.genere,
+            "eta": lambda r: not f.eta or r[6] in f.eta,
+            "mot": lambda r: not f.motivo or (r[7], r[8]) in f.motivo,
+        }
+
+        def scan(relax: str):
+            checks = [c for k, c in ok.items() if k != relax]
+            return [r for r in rows if all(c(r) for c in checks)]
+
+        def total_by(relax: str, key):
+            out: dict = {}
+            for r in scan(relax):
+                out[key(r)] = out.get(key(r), 0.0) + r[9]
+            return out
+
+        n_days = self._n_days(f)
+        by_day = total_by("date", lambda r: r[0])
+        by_dow = total_by("dow", lambda r: r[1])
+        dow_cnt = [sum(1 for d in self.days if d.isoweekday() == i + 1 and (not f.da or d >= f.da) and (not f.a or d <= f.a))
+                   for i in range(7)]
+        by_fascia = total_by("fascia", lambda r: r[2])
+        by_mot = total_by("mot", lambda r: (r[7], r[8]))
+        by_eta = total_by("eta", lambda r: (r[5], r[6]))
+        motivi = ("residente", "lavoratore", "visitatore")
+        return dict(
+            giornaliero=[dict(giorno=d.isoformat(), dow=d.isoweekday(), n=by_day.get(d, 0.0)) for d in self.days],
+            per_dow=[dict(dow=i + 1, label=DOW_LABELS[i], media=(by_dow.get(i + 1, 0.0) / dow_cnt[i]) if dow_cnt[i] else None)
+                     for i in range(7)],
+            per_fascia=[dict(fascia=k, media=by_fascia.get(k, 0.0) / n_days)
+                        for k in ("notte", "mattina_punta", "centrale", "sera_punta", "sera")],
+            motivi=[dict(mo=a, md=b, n=by_mot.get((a, b), 0.0)) for a in motivi for b in motivi],
+            tipologia={k: total_by("tip", lambda r: r[3]).get(k, 0.0) for k in ("interno", "di scambio")},
+            nazionalita={k: total_by("naz", lambda r: r[4]).get(k, 0.0) for k in ("nazionale", "internazionale")},
+            genere={k: total_by("gen", lambda r: r[5]).get(k, 0.0) for k in ("f", "m", "NA")},
+            eta=[dict(genere=g, eta=e, n=v) for (g, e), v in by_eta.items()],
         )
 
     def _node_split(self, f: Filters) -> dict:

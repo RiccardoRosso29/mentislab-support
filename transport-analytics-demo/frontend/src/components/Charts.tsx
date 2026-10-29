@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 import { COLORS, fmt, fmtCompact, fmtPct } from '../labels'
@@ -33,7 +33,12 @@ export interface Pick {
   seriesIndex: number
   name: string
   value: unknown
+  /** Ctrl/⌘ premuto: aggiunge o toglie il valore dalla selezione invece di sostituirla */
+  multi: boolean
 }
+
+// opacità degli elementi non selezionati quando un grafico ha una selezione attiva
+const DIM = 0.28
 type OnPick = (p: Pick) => void
 
 export function Chart({ option, height = 180, onPick }: { option: EChartsOption; height?: number; onPick?: OnPick }) {
@@ -49,7 +54,16 @@ export function Chart({ option, height = 180, onPick }: { option: EChartsOption;
       notMerge
       lazyUpdate
       opts={{ renderer: 'svg' }}
-      onEvents={onPick ? { click: (e: Pick) => onPick(e) } : undefined}
+      onEvents={
+        onPick
+          ? {
+              click: (e: Omit<Pick, 'multi'> & { event?: { event?: MouseEvent } }) => {
+                const ev = e.event?.event
+                onPick({ ...e, multi: Boolean(ev && (ev.ctrlKey || ev.metaKey)) })
+              },
+            }
+          : undefined
+      }
     />
   )
 }
@@ -76,7 +90,8 @@ export function BarChart({
       height={height}
       onPick={onPick}
       option={{
-        xAxis: { ...catAxis(labels), axisLabel: { color: COLORS.text, interval: 0, lineHeight: 14 } },
+        // etichette a capo entro la larghezza della barra: niente sovrapposizioni con nomi lunghi
+        xAxis: { ...catAxis(labels), axisLabel: { color: COLORS.text, interval: 0, lineHeight: 13, fontSize: 11, width: 62, overflow: 'break' } },
         yAxis: valueAxis,
         series: [
           {
@@ -85,7 +100,8 @@ export function BarChart({
             data: values.map((v, i) => ({
               value: v,
               itemStyle: {
-                color: colors?.[i] ?? (highlight && !highlight(i) ? COLORS.grey : color),
+                color: colors?.[i] ?? color,
+                opacity: highlight && !highlight(i) ? DIM : 1,
                 borderRadius: [2, 2, 0, 0],
               },
             })),
@@ -97,7 +113,7 @@ export function BarChart({
   )
 }
 
-export function Donut({ items, height = 170, onPick }: { items: { name: string; value: number; color: string }[]; height?: number; onPick?: OnPick }) {
+export function Donut({ items, height = 170, onPick, selected }: { items: { name: string; value: number; color: string }[]; height?: number; onPick?: OnPick; selected?: (i: number) => boolean }) {
   const total = items.reduce((s, i) => s + i.value, 0)
   return (
     <Chart
@@ -116,7 +132,7 @@ export function Donut({ items, height = 170, onPick }: { items: { name: string; 
               rich: { n: { fontSize: 12, color: COLORS.muted, fontFamily: FONT }, v: { fontSize: 16, fontWeight: 700, fontFamily: FONT, color: COLORS.text } },
             },
             labelLine: { length: 8, length2: 10 },
-            data: items.map((i) => ({ name: i.name, value: i.value, itemStyle: { color: i.color } })),
+            data: items.map((it, i) => ({ name: it.name, value: it.value, itemStyle: { color: it.color, opacity: selected && !selected(i) ? DIM : 1 } })),
           },
         ],
       }}
@@ -130,12 +146,14 @@ export function GroupedBars({
   height = 200,
   stack,
   onPick,
+  selected,
 }: {
   labels: string[]
   series: { name: string; values: number[]; color: string }[]
   height?: number
   stack?: boolean
   onPick?: OnPick
+  selected?: (i: number) => boolean
 }) {
   return (
     <Chart
@@ -151,7 +169,7 @@ export function GroupedBars({
           name: s.name,
           stack: stack ? 'tot' : undefined,
           barMaxWidth: 22,
-          data: s.values,
+          data: s.values.map((v, i) => ({ value: v, itemStyle: { opacity: selected && !selected(i) ? DIM : 1 } })),
           itemStyle: { color: s.color },
         })),
       }}
@@ -166,6 +184,7 @@ export function Heatmap({
   height = 190,
   total,
   onPick,
+  selected,
 }: {
   rows: string[]
   cols: string[]
@@ -173,8 +192,17 @@ export function Heatmap({
   height?: number
   total: number
   onPick?: OnPick
+  selected?: (row: number, col: number) => boolean
 }) {
-  const data = values.flatMap((r, i) => r.map((v, j) => [j, i, v]))
+  const data = values.flatMap((r, i) =>
+    r.map((v, j) => {
+      const on = !selected || selected(i, j)
+      return {
+        value: [j, i, v],
+        itemStyle: { opacity: on ? 1 : DIM, borderColor: selected && on ? COLORS.secondary : '#fff', borderWidth: selected && on ? 2.5 : 2 },
+      }
+    }),
+  )
   const max = Math.max(1, ...values.flat())
   return (
     <Chart
@@ -193,7 +221,6 @@ export function Heatmap({
           {
             type: 'heatmap',
             data,
-            itemStyle: { borderColor: '#fff', borderWidth: 2 },
             label: {
               show: true,
               formatter: (p: any) => fmtPct(p.value[2] / total),
@@ -214,12 +241,14 @@ export function LineDaily({
   weekend,
   height = 170,
   onPick,
+  selected,
 }: {
   labels: string[]
   values: number[]
   weekend: boolean[]
   height?: number
   onPick?: OnPick
+  selected?: (i: number) => boolean
 }) {
   return (
     <Chart
@@ -232,7 +261,10 @@ export function LineDaily({
           {
             type: 'bar',
             barMaxWidth: 18,
-            data: values.map((v, i) => ({ value: v, itemStyle: { color: weekend[i] ? COLORS.secondary : COLORS.accent } })),
+            data: values.map((v, i) => ({
+              value: v,
+              itemStyle: { color: weekend[i] ? COLORS.secondary : COLORS.accent, opacity: selected && !selected(i) ? DIM : 1 },
+            })),
           },
         ],
       }}
@@ -240,23 +272,52 @@ export function LineDaily({
   )
 }
 
-/** Barra impilata 100% in stile card KPI della piattaforma. */
-export function StackBar({ items, onPick }: { items: { label: string; value: number; color: string }[]; onPick?: (i: number) => void }) {
+/** Barra impilata 100% in stile card KPI della piattaforma, con etichetta al passaggio del mouse. */
+export function StackBar({
+  items,
+  onPick,
+  selected,
+}: {
+  items: { label: string; value: number; color: string }[]
+  onPick?: (i: number, multi: boolean) => void
+  selected?: (i: number) => boolean
+}) {
   const total = items.reduce((s, i) => s + i.value, 0)
+  const [tip, setTip] = useState<{ i: number; x: number; w: number } | null>(null)
   return (
     <div className="stackbar-wrap">
-      <div className="stackbar">
-        {items.map((i) =>
-          total && i.value > 0 ? (
+      <div className="stackbar" onMouseLeave={() => setTip(null)}>
+        {items.map((it, i) =>
+          total && it.value > 0 ? (
             <div
-              key={i.label}
-              style={{ width: `${(i.value / total) * 100}%`, background: i.color, cursor: onPick ? 'pointer' : undefined }}
-              title={`${i.label}: ${fmt(i.value)}${onPick ? ' · clic per filtrare' : ''}`}
-              onClick={onPick ? () => onPick(items.indexOf(i)) : undefined}
+              key={it.label}
+              style={{
+                width: `${(it.value / total) * 100}%`,
+                background: it.color,
+                opacity: selected && !selected(i) ? DIM : 1,
+                cursor: onPick ? 'pointer' : undefined,
+              }}
+              onMouseMove={(e) => {
+                const box = e.currentTarget.parentElement!.getBoundingClientRect()
+                setTip({ i, x: e.clientX - box.left, w: box.width })
+              }}
+              onClick={onPick ? (e) => onPick(i, e.ctrlKey || e.metaKey) : undefined}
             >
-              {i.value / total > 0.08 ? fmtPct(i.value / total) : ''}
+              {it.value / total > 0.08 ? fmtPct(it.value / total) : ''}
             </div>
           ) : null,
+        )}
+        {tip && items[tip.i] && (
+          <div
+            className="chart-tip"
+            // ancorata a sinistra o a destra vicino ai bordi, così resta dentro la scheda
+            style={{ left: tip.x, transform: `translateX(${tip.x < tip.w * 0.25 ? '-10%' : tip.x > tip.w * 0.75 ? '-90%' : '-50%'})` }}
+          >
+            <span className="chart-tip-dot" style={{ background: items[tip.i].color }} />
+            {items[tip.i].label}
+            <b>{fmt(items[tip.i].value)}</b>
+            <span className="chart-tip-pct">{fmtPct(items[tip.i].value / total)}</span>
+          </div>
         )}
       </div>
       <div className="stackbar-legend">

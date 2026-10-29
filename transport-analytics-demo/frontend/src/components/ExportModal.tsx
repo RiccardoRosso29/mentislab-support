@@ -104,7 +104,12 @@ function LossTicks({ s }: { s: Summary | string | null | undefined }) {
         troppo dettagliato
       </span>
     )
-  if (s === undefined || s === null) return <span className="xp-ticks pending">···</span>
+  if (s === undefined || s === null)
+    return (
+      <span className="xp-ticks pending" aria-label="calcolo in corso">
+        <span className="xp-spin" />
+      </span>
+    )
   const sv = severity(s.perdita)
   const lit = s.perdita <= 0.01 ? 1 : s.perdita <= 0.05 ? 2 : s.perdita <= 0.2 ? 3 : 4
   return (
@@ -222,6 +227,7 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
   const current = entry && typeof entry === 'object' ? entry : null
   const entryError = typeof entry === 'string' ? entry : null
   const sv = current ? severity(current.perdita) : null
+  const loading = campi.length > 0 && !current && !entryError
   const summaryOf = (cs: Campo[]) => summaries[urlFor(cs)]
 
   const toggle = (c: Campo) => setCustom((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]))
@@ -396,15 +402,16 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
               <div className="xp-gauge-top">
                 <div>
                   <span className="xp-gauge-label">Perdita informativa</span>
-                  <span className="xp-gauge-sev">{sv ? sv.label : entryError ? 'Non calcolabile' : campi.length ? 'Calcolo in corso…' : 'Nessun campo'}</span>
+                  <span className="xp-gauge-sev">{sv ? sv.label : entryError ? 'Non calcolabile' : campi.length ? 'Calcolo…' : 'Nessun campo'}</span>
                 </div>
-                <span className="xp-gauge-value">{current ? fmtPct(current.perdita) : '–'}</span>
+                {current ? <span className="xp-gauge-value">{fmtPct(current.perdita)}</span> : loading ? <span className="xp-skel" /> : <span className="xp-gauge-value">–</span>}
               </div>
               <div className="xp-scale">
                 <span className="z1" />
                 <span className="z2" />
                 <span className="z3" />
                 {current && <i style={{ left: `${marker}%` }} />}
+                {loading && <span className="xp-loading-bar" />}
               </div>
               <div className="xp-scale-labels">
                 <span>0%</span>

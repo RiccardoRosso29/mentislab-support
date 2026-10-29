@@ -77,29 +77,31 @@ class Filters:
     def key(self) -> str:
         return repr(self)
 
-    def where(self, with_selection: bool = True) -> tuple[str, list]:
+    def where(self, with_selection: bool = True, attributes: bool = True) -> tuple[str, list]:
+        """Clausola WHERE; con attributes=False valgono solo zone e selezione (grafici crossfilter)."""
         clauses, params = [], []
+        attr = self if attributes else Filters(livello=self.livello)
 
         def add_in(col: str, values: list):
             if values:
                 clauses.append(f"{col} IN ({', '.join('?' * len(values))})")
                 params.extend(values)
 
-        if self.da:
+        if attr.da:
             clauses.append("giorno >= ?")
-            params.append(self.da)
-        if self.a:
+            params.append(attr.da)
+        if attr.a:
             clauses.append("giorno <= ?")
-            params.append(self.a)
-        add_in("dow", self.dow)
-        add_in("fascia", self.fascia)
-        add_in("tipologia", self.tipologia)
-        add_in("nazionalita", self.nazionalita)
-        add_in("genere", self.genere)
-        add_in("eta", self.eta)
-        if self.motivo:
-            clauses.append("(" + " OR ".join("(mo = ? AND md = ?)" for _ in self.motivo) + ")")
-            for mo, md in self.motivo:
+            params.append(attr.a)
+        add_in("dow", attr.dow)
+        add_in("fascia", attr.fascia)
+        add_in("tipologia", attr.tipologia)
+        add_in("nazionalita", attr.nazionalita)
+        add_in("genere", attr.genere)
+        add_in("eta", attr.eta)
+        if attr.motivo:
+            clauses.append("(" + " OR ".join("(mo = ? AND md = ?)" for _ in attr.motivo) + ")")
+            for mo, md in attr.motivo:
                 params.extend([mo, md])
 
         # origine E destinazione: un lato senza filtri non vincola

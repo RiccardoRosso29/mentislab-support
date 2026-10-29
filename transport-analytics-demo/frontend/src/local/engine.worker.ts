@@ -219,6 +219,8 @@ function parse(q: URLSearchParams): Filters {
 // ------------------------------------------------------------------ calcolo
 interface Result {
   hist: Float64Array
+  /** come hist ma senza filtri sugli attributi (solo zone e selezione): base per i grafici "crossfilter" */
+  all: Float64Array
   pairs: Map<number, number> // coppie al livello richiesto, chiave su indici densi (vedi pairIds)
   nDays: number
 }
@@ -248,6 +250,7 @@ function compute(d: Data, f: Filters): Result {
     empty(sel) || sel.prov.has(p) || sel.zone.has(c) || sel.ace.has(a)
 
   const hist = new Float64Array(N_P1 * N_P2 * N_P3)
+  const all = new Float64Array(N_P1 * N_P2 * N_P3)
   const pairs = new Map<number, number>()
   const { pzo, pzd, pStart, p1, p2, p3, n, zoneId, zoneComune, zoneProv } = d
   const lvl = d.levels[f.livello]
@@ -265,9 +268,11 @@ function compute(d: Data, f: Filters): Result {
     let sum = 0
     for (let r = pStart[p], end = pStart[p + 1]; r < end; r++) {
       const b1 = p1[r], b2 = p2[r], b3 = p3[r]
+      const bin = (b1 * N_P2 + b2) * N_P3 + b3
+      const v = n[r]
+      all[bin] += v
       if (a1[b1] & a2[b2] & a3[b3]) {
-        const v = n[r]
-        hist[(b1 * N_P2 + b2) * N_P3 + b3] += v
+        hist[bin] += v
         sum += v
       }
     }
@@ -278,7 +283,7 @@ function compute(d: Data, f: Filters): Result {
   }
 
   const nDays = d.days.filter((x) => inPeriod(f, x)).length || 1
-  return { hist, pairs, nDays }
+  return { hist, all, pairs, nDays }
 }
 
 function resultFor(d: Data, f: Filters, q: URLSearchParams): Result {
@@ -358,6 +363,7 @@ function stats(d: Data, f: Filters, r: Result) {
 
   const present = (arr: ArrayLike<number>, i: number) => arr[i] > 0
   return {
+    cross: crossStats(d, f, r),
     kpi,
     giornaliero: d.days.flatMap((x, i) => (inPeriod(f, x) ? [{ giorno: x.iso, dow: x.dow, n: giorno[i] }] : [])),
     per_dow: DOW_LABELS.map((label, i) => ({ dow: i + 1, label, media: dowCnt[i] ? dowSum[i] / dowCnt[i] : null })),
@@ -371,6 +377,83 @@ function stats(d: Data, f: Filters, r: Result) {
     tipologia: Object.fromEntries(TIPOLOGIE.flatMap((k, i) => (tip[i] > 0 ? [[k, tip[i]]] : []))),
     top_od: topOd(d, f, r, 10),
     n_giorni: r.nDays,
+  }
+}
+
+/**
+ * Distribuzioni per i grafici interattivi: ogni grafico applica tutti i filtri tranne il proprio,
+ * così i valori non selezionati restano visibili (evidenziati solo quelli scelti).
+ */
+function crossStats(d: Data, f: Filters, r: Result) {
+  const has = <T,>(list: T[], v: T) => list.length === 0 || list.includes(v)
+  const dateOk = d.days.map((x) => (!f.da || x.iso >= f.da) && (!f.a || x.iso <= f.a))
+  const dowOk = d.days.map((x) => has(f.dow, x.dow))
+  const fasOk = FASCE.map((x) => has(f.fascia, x))
+  const tipOk = TIPOLOGIE.map((x) => has(f.tipologia, x))
+  const nazOk = NAZIONALITA.map((x) => has(f.nazionalita, x))
+  const genOk = GENERI.map((x) => has(f.genere, x))
+  const etaOk = ETA.map((x) => has(f.eta, x))
+  const motOk = Array.from({ length: 9 }, (_, v) => f.motivo.length === 0 || f.motivo.some(([x, y]) => x === MOTIVI[Math.floor(v / 3)] && y === MOTIVI[v % 3]))
+
+  type Dim = 'date' | 'dow' | 'fascia' | 'tip' | 'naz' | 'gen' | 'eta' | 'mot'
+  /** Somma i bin che rispettano tutti i filtri tranne `relax`, passando le componenti decodificate. */
+  const scan = (relax: Dim, add: (v: number, g: number, fa: number, b2: number, b3: number) => void) => {
+    for (let i = 0; i < r.all.length; i++) {
+      const v = r.all[i]
+      if (v === 0) continue
+      const b3 = i % N_P3
+      const b2 = Math.floor(i / N_P3) % N_P2
+      const b1 = Math.floor(i / (N_P3 * N_P2))
+      const g = Math.floor(b1 / 5), fa = b1 % 5
+      const tp = b2 & 1, nz = (b2 >> 1) & 1, ge = (b2 >> 2) & 3, et = b2 >> 4
+      if (relax !== 'date' && !dateOk[g]) continue
+      if (relax !== 'dow' && !dowOk[g]) continue
+      if (relax !== 'fascia' && !fasOk[fa]) continue
+      if (relax !== 'tip' && !tipOk[tp]) continue
+      if (relax !== 'naz' && !nazOk[nz]) continue
+      if (relax !== 'gen' && !genOk[ge]) continue
+      if (relax !== 'eta' && !etaOk[et]) continue
+      if (relax !== 'mot' && !motOk[b3]) continue
+      add(v, g, fa, b2, b3)
+    }
+  }
+
+  const giorno = new Float64Array(d.days.length)
+  scan('date', (v, g) => (giorno[g] += v))
+
+  const dowSum = new Array(7).fill(0)
+  scan('dow', (v, g) => (dowSum[d.days[g].dow - 1] += v))
+  const dowCnt = new Array(7).fill(0)
+  d.days.forEach((x, g) => dateOk[g] && dowCnt[x.dow - 1]++)
+
+  const fascia = new Float64Array(5)
+  scan('fascia', (v, _g, fa) => (fascia[fa] += v))
+  const mot = new Float64Array(9)
+  scan('mot', (v, _g, _fa, _b2, b3) => (mot[b3] += v))
+  const tip = [0, 0]
+  scan('tip', (v, _g, _fa, b2) => (tip[b2 & 1] += v))
+  const naz = [0, 0]
+  scan('naz', (v, _g, _fa, b2) => (naz[(b2 >> 1) & 1] += v))
+  const gen = [0, 0, 0]
+  scan('gen', (v, _g, _fa, b2) => (gen[(b2 >> 2) & 3] += v))
+  const eta = new Map<string, number>()
+  scan('eta', (v, _g, _fa, b2) => {
+    const k = `${GENERI[(b2 >> 2) & 3]}|${ETA[b2 >> 4]}`
+    eta.set(k, (eta.get(k) ?? 0) + v)
+  })
+
+  return {
+    giornaliero: d.days.map((x, i) => ({ giorno: x.iso, dow: x.dow, n: giorno[i] })),
+    per_dow: DOW_LABELS.map((label, i) => ({ dow: i + 1, label, media: dowCnt[i] ? dowSum[i] / dowCnt[i] : null })),
+    per_fascia: FASCE.map((id, i) => ({ fascia: id, media: fascia[i] / r.nDays })),
+    motivi: [...mot].map((v, i) => ({ mo: MOTIVI[Math.floor(i / 3)], md: MOTIVI[i % 3], n: v })),
+    tipologia: Object.fromEntries(TIPOLOGIE.map((k, i) => [k, tip[i]])),
+    nazionalita: Object.fromEntries(NAZIONALITA.map((k, i) => [k, naz[i]])),
+    genere: Object.fromEntries(GENERI.map((k, i) => [k, gen[i]])),
+    eta: [...eta.entries()].map(([k, v]) => {
+      const [genere, e] = k.split('|')
+      return { genere, eta: e, n: v }
+    }),
   }
 }
 

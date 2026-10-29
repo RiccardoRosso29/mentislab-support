@@ -76,6 +76,17 @@ export interface Stats {
   nazionalita: Record<string, number>
   tipologia: Record<string, number>
   top_od: { o: number; o_nome: string; d: number; d_nome: string; n: number; media: number }[]
+  /** distribuzioni dei grafici interattivi: ognuna senza il filtro del proprio grafico */
+  cross: {
+    giornaliero: { giorno: string; dow: number; n: number }[]
+    per_dow: { dow: number; label: string; media: number | null }[]
+    per_fascia: { fascia: string; media: number }[]
+    motivi: { mo: string; md: string; n: number }[]
+    tipologia: Record<string, number>
+    nazionalita: Record<string, number>
+    genere: Record<string, number>
+    eta: { genere: string; eta: string; n: number }[]
+  }
   n_giorni: number
 }
 
