@@ -1,6 +1,7 @@
 """Traduzione dei filtri della UI in clausole SQL parametriche sul fact table."""
 
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Literal
 
 from fastapi import HTTPException, Query
@@ -60,6 +61,9 @@ class Filters:
     motivo: list[tuple[str, str]] = field(default_factory=list)
     origine: tuple[list[int], list[int], list[int]] = ([], [], [])
     destinazione: tuple[list[int], list[int], list[int]] = ([], [], [])
+    od: Literal["and", "or"] = "and"  # come si combinano i filtri di origine e destinazione
+    da: date | None = None
+    a: date | None = None
     nodo: int | None = None
     link: tuple[int, int] | None = None
 
@@ -82,6 +86,12 @@ class Filters:
                 clauses.append(f"{col} IN ({', '.join('?' * len(values))})")
                 params.extend(values)
 
+        if self.da:
+            clauses.append("giorno >= ?")
+            params.append(self.da)
+        if self.a:
+            clauses.append("giorno <= ?")
+            params.append(self.a)
         add_in("dow", self.dow)
         add_in("fascia", self.fascia)
         add_in("tipologia", self.tipologia)
@@ -93,6 +103,7 @@ class Filters:
             for mo, md in self.motivo:
                 params.extend([mo, md])
 
+        sides = []
         for side, zones in (("o", self.origine), ("d", self.destinazione)):
             parts = []
             for col, ids in zip(("p", "z", "a"), zones):
@@ -100,7 +111,9 @@ class Filters:
                     parts.append(f"{col}{side} IN ({', '.join('?' * len(ids))})")
                     params.extend(ids)
             if parts:
-                clauses.append("(" + " OR ".join(parts) + ")")
+                sides.append("(" + " OR ".join(parts) + ")")
+        if sides:
+            clauses.append("(" + (" OR " if self.od == "or" else " AND ").join(sides) + ")")
 
         if with_selection:
             if self.nodo is not None:
@@ -125,6 +138,9 @@ def parse_filters(
     motivo: str | None = Query(None, description="coppie mo>md, es. residente>lavoratore"),
     origine: str | None = Query(None, description="token p:<provincia> o c:<zona>"),
     destinazione: str | None = None,
+    od: Literal["and", "or"] = Query("and", description="and: origine E destinazione; or: origine O destinazione"),
+    da: date | None = None,
+    a: date | None = None,
     nodo: int | None = None,
     link: str | None = Query(None, description="a,b"),
 ) -> Filters:
@@ -151,6 +167,9 @@ def parse_filters(
         motivo=pairs,
         origine=_zones(origine, "origine"),
         destinazione=_zones(destinazione, "destinazione"),
+        od=od,
+        da=da,
+        a=a,
         nodo=nodo,
         link=(link_ids[0], link_ids[1]) if link_ids else None,
     )

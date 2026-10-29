@@ -160,7 +160,15 @@ interface Filters {
   destinazione: ZoneSel
   nodo: number | null
   link: [number, number] | null
+  od: 'and' | 'or'
+  da: string | null
+  a: string | null
 }
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/
+/** Giorno incluso nel periodo filtrato (intervallo di date e giorni della settimana). */
+const inPeriod = (f: Filters, x: { iso: string; dow: number }) =>
+  (f.dow.length === 0 || f.dow.includes(x.dow)) && (!f.da || x.iso >= f.da) && (!f.a || x.iso <= f.a)
 
 const split = (v: string | null) => (v ? v.split(',').filter(Boolean) : [])
 function enumList(q: URLSearchParams, k: string, allowed: string[]) {
@@ -203,6 +211,9 @@ function parse(q: URLSearchParams): Filters {
     origine: zones(q.get('origine')),
     destinazione: zones(q.get('destinazione')),
     nodo: q.get('nodo') ? Number(q.get('nodo')) : null,
+    od: q.get('od') === 'or' ? 'or' : 'and',
+    da: DATE.test(q.get('da') ?? '') ? q.get('da') : null,
+    a: DATE.test(q.get('a') ?? '') ? q.get('a') : null,
     link: link.length === 2 ? [link[0], link[1]] : null,
   }
 }
@@ -221,7 +232,7 @@ function compute(d: Data, f: Filters): Result {
 
   const a1 = new Uint8Array(N_P1)
   for (let g = 0; g < d.days.length; g++)
-    for (let fa = 0; fa < 5; fa++) a1[g * 5 + fa] = +(has(f.dow, d.days[g].dow) && has(f.fascia, FASCE[fa]))
+    for (let fa = 0; fa < 5; fa++) a1[g * 5 + fa] = +(inPeriod(f, d.days[g]) && has(f.fascia, FASCE[fa]))
   const a2 = new Uint8Array(N_P2)
   for (let v = 0; v < N_P2; v++) {
     const tp = v & 1, nz = (v >> 1) & 1, ge = (v >> 2) & 3, et = v >> 4
@@ -238,6 +249,11 @@ function compute(d: Data, f: Filters): Result {
   const sideOk = (sel: ZoneSel, a: number, c: number, p: number) =>
     empty(sel) || sel.prov.has(p) || sel.zone.has(c) || sel.ace.has(a)
 
+  // senza filtri su un lato quel lato non vincola; in modalità "or" basta che uno dei lati filtrati sia soddisfatto
+  const anyO = !empty(f.origine), anyD = !empty(f.destinazione)
+  const odOk = (okO: boolean, okD: boolean) =>
+    f.od === 'or' && anyO && anyD ? (anyO && okO) || (anyD && okD) : okO && okD
+
   const hist = new Float64Array(N_P1 * N_P2 * N_P3)
   const pairs = new Map<number, number>()
   const { pzo, pzd, pStart, p1, p2, p3, n, zoneId, zoneComune, zoneProv } = d
@@ -245,8 +261,8 @@ function compute(d: Data, f: Filters): Result {
 
   for (let p = 0; p < pzo.length; p++) {
     const io = pzo[p], id = pzd[p]
-    if (!sideOk(f.origine, zoneId[io], zoneComune[io], zoneProv[io])) continue
-    if (!sideOk(f.destinazione, zoneId[id], zoneComune[id], zoneProv[id])) continue
+    if (!odOk(sideOk(f.origine, zoneId[io], zoneComune[io], zoneProv[io]), sideOk(f.destinazione, zoneId[id], zoneComune[id], zoneProv[id])))
+      continue
     const ko = lvl.ofAce[io], kd = lvl.ofAce[id]
     const o = lvl.ids[ko], de = lvl.ids[kd]
     if (f.nodo !== null && o !== f.nodo && de !== f.nodo) continue
@@ -267,7 +283,7 @@ function compute(d: Data, f: Filters): Result {
     }
   }
 
-  const nDays = d.days.filter((x) => has(f.dow, x.dow)).length || 1
+  const nDays = d.days.filter((x) => inPeriod(f, x)).length || 1
   return { hist, pairs, nDays }
 }
 
@@ -319,12 +335,10 @@ function stats(d: Data, f: Filters, r: Result) {
     ge.set(k, (ge.get(k) ?? 0) + v)
     mot[b3] += v
   }
-  const has = (v: number) => f.dow.length === 0 || f.dow.includes(v)
-
   const dowSum = new Array(7).fill(0)
   const dowCnt = new Array(7).fill(0)
   d.days.forEach((x, i) => {
-    if (!has(x.dow)) return
+    if (!inPeriod(f, x)) return
     dowSum[x.dow - 1] += giorno[i]
     dowCnt[x.dow - 1] += 1
   })
@@ -351,7 +365,7 @@ function stats(d: Data, f: Filters, r: Result) {
   const present = (arr: ArrayLike<number>, i: number) => arr[i] > 0
   return {
     kpi,
-    giornaliero: d.days.map((x, i) => ({ giorno: x.iso, dow: x.dow, n: giorno[i] })).filter((x) => has(x.dow)),
+    giornaliero: d.days.flatMap((x, i) => (inPeriod(f, x) ? [{ giorno: x.iso, dow: x.dow, n: giorno[i] }] : [])),
     per_dow: DOW_LABELS.map((label, i) => ({ dow: i + 1, label, media: dowCnt[i] ? dowSum[i] / dowCnt[i] : null })),
     per_fascia: FASCE.map((id, i) => ({ fascia: id, media: fascia[i] / r.nDays })).filter((_, i) => present(fascia, i)),
     genere_eta: [...ge.entries()].map(([k, v]) => {

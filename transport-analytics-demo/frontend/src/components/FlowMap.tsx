@@ -102,6 +102,9 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
   const nodeList = useMemo(() => {
     const visible = new Set<number>(arcs.flatMap((a) => [a.o, a.d]))
     if (selection?.type === 'nodo') visible.add(selection.id)
+    // con pochi flussi tra zone diverse (es. origine e destinazione nello stesso comune) si mostrano
+    // anche le zone con soli spostamenti interni, altrimenti la mappa resterebbe vuota
+    if (arcs.length < 20) for (const [id, t] of nodeTotals) if (t.interni > 0) visible.add(id)
     return [...nodeTotals.entries()]
       .filter(([id]) => visible.has(id))
       .map(([id, t]) => ({ ...t, info: nodes.get(id)! }))

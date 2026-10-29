@@ -48,8 +48,11 @@ class Warehouse:
         finally:
             cur.close()
 
+    def _in_period(self, f: Filters, d) -> bool:
+        return (not f.dow or d.isoweekday() in f.dow) and (not f.da or d >= f.da) and (not f.a or d <= f.a)
+
     def _n_days(self, f: Filters) -> int:
-        return sum(1 for d in self.days if not f.dow or d.isoweekday() in f.dow) or 1
+        return sum(1 for d in self.days if self._in_period(f, d)) or 1
 
     # ------------------------------------------------------------------ meta
     def meta(self) -> dict:
@@ -108,11 +111,11 @@ class Warehouse:
 
         giornaliero = {r[1]: r[9] for r in by(only("giorno"))}
         serie = [dict(giorno=d.isoformat(), dow=d.isoweekday(), n=giornaliero.get(d, 0.0))
-                 for d in self.days if not f.dow or d.isoweekday() in f.dow]
+                 for d in self.days if self._in_period(f, d)]
 
         dow_sum, dow_cnt = [0.0] * 7, [0] * 7
         for d in self.days:
-            if f.dow and d.isoweekday() not in f.dow:
+            if not self._in_period(f, d):
                 continue
             dow_sum[d.isoweekday() - 1] += giornaliero.get(d, 0.0)
             dow_cnt[d.isoweekday() - 1] += 1

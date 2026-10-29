@@ -6,9 +6,23 @@ import { COLORS, fmt, fmtDate } from './labels'
 import FilterBar from './components/FilterBar'
 import FlowMap, { type NodeInfo } from './components/FlowMap'
 import Sidebar from './components/Sidebar'
+import { IconAce, IconComune, IconProvincia } from './components/icons'
 
 const EXTRA_REGION_OFFSET = 900_000
-const FLOW_LIMITS = [100, 300, 600, 1200]
+// slider dei flussi su scala logaritmica: più precisione sui valori bassi
+const FLOW_MIN = 20
+const FLOW_MAX = 3000
+const toSlider = (n: number) => Math.round((Math.log(n / FLOW_MIN) / Math.log(FLOW_MAX / FLOW_MIN)) * 100)
+const fromSlider = (v: number) => {
+  const n = FLOW_MIN * (FLOW_MAX / FLOW_MIN) ** (v / 100)
+  return n < 100 ? Math.round(n / 5) * 5 : n < 1000 ? Math.round(n / 10) * 10 : Math.round(n / 50) * 50
+}
+
+const LIVELLI: { id: Livello; label: string; hint: string; Icon: typeof IconAce }[] = [
+  { id: 'ace', label: 'ACE ISTAT', hint: 'Aree di censimento ISTAT: subcomunali nei comuni maggiori', Icon: IconAce },
+  { id: 'comune', label: 'Comuni', hint: 'Comuni del Piemonte', Icon: IconComune },
+  { id: 'provincia', label: 'Province', hint: 'Province', Icon: IconProvincia },
+]
 
 interface UrlState {
   livello: Livello
@@ -23,6 +37,8 @@ function readUrl(): UrlState {
   const list = (k: string) => (q.get(k) ? q.get(k)!.split(',') : [])
   const filters = Object.fromEntries(Object.keys(EMPTY_FILTERS).map((k) => [k, list(k)])) as unknown as Filters
   filters.dow = (filters.dow as unknown as string[]).map(Number)
+  filters.periodo = q.get('da') && q.get('a') ? [q.get('da')!, q.get('a')!] : []
+  filters.od = q.get('od') === 'or' ? ['or'] : []
   const nodo = q.get('nodo')
   const link = q.get('link')?.split(',').map(Number)
   return {
@@ -114,17 +130,24 @@ export default function App() {
             {fmtDate(meta.periodo.a, { day: 'numeric', month: 'long', year: 'numeric' })}
           </span>
         </div>
-        <div className="seg">
-          <span>Zonizzazione</span>
-          <button className={livello === 'ace' ? 'on' : ''} onClick={() => changeLivello('ace')} title="Aree di censimento ISTAT">
-            ACE ISTAT
-          </button>
-          <button className={livello === 'comune' ? 'on' : ''} onClick={() => changeLivello('comune')}>
-            Comuni
-          </button>
-          <button className={livello === 'provincia' ? 'on' : ''} onClick={() => changeLivello('provincia')}>
-            Province
-          </button>
+        <div className="zoning">
+          <span className="zoning-label">Zonizzazione</span>
+          <div className="zoning-track" role="radiogroup" aria-label="Zonizzazione">
+            <span className="zoning-thumb" style={{ transform: `translateX(${LIVELLI.findIndex((l) => l.id === livello) * 100}%)` }} />
+            {LIVELLI.map(({ id, label, hint, Icon }) => (
+              <button
+                key={id}
+                role="radio"
+                aria-checked={livello === id}
+                className={livello === id ? 'on' : ''}
+                onClick={() => changeLivello(id)}
+                title={hint}
+              >
+                <Icon />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -171,15 +194,24 @@ export default function App() {
           )}
 
           <div className="map-panel">
-            <div className="mp-row">
+            <label className="mp-row" htmlFor="flow-limit">
               <span>Flussi mostrati</span>
-              <div className="seg small">
-                {FLOW_LIMITS.map((l) => (
-                  <button key={l} className={limit === l ? 'on' : ''} onClick={() => setLimit(l)}>
-                    {l}
-                  </button>
-                ))}
-              </div>
+              <b className="mp-value">{fmt(f ? Math.min(limit, f.coppie_totali) : limit)}</b>
+            </label>
+            <input
+              id="flow-limit"
+              className="slider"
+              type="range"
+              min={0}
+              max={100}
+              value={toSlider(limit)}
+              style={{ '--fill': `${toSlider(limit)}%` } as React.CSSProperties}
+              onChange={(e) => setLimit(fromSlider(Number(e.target.value)))}
+            />
+            <div className="slider-scale">
+              <span>{FLOW_MIN}</span>
+              <span>principali</span>
+              <span>{fmt(FLOW_MAX)}</span>
             </div>
             {f && (
               <p className="mp-note">

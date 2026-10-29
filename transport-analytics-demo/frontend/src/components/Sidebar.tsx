@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { Selection, Stats } from '../api'
 import {
   COLORS,
@@ -16,6 +16,19 @@ import {
   fmtPct,
 } from '../labels'
 import { BarChart, Donut, GroupedBars, Heatmap, LineDaily, StackBar } from './Charts'
+import { IconSearch } from './icons'
+
+const SEZIONI = { panoramica: 'Panoramica', comportamenti: 'Comportamenti', profili: 'Profili' } as const
+type Sezione = keyof typeof SEZIONI
+const ALL = new Set(Object.keys(SEZIONI) as Sezione[])
+
+interface Item {
+  id: string
+  sezione: Sezione
+  keywords: string // termini per la ricerca, in minuscolo
+  show?: boolean
+  render: () => ReactNode
+}
 
 interface Props {
   stats: Stats | null
@@ -49,6 +62,18 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
 }
 
 export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink }: Props) {
+  const [query, setQuery] = useState('')
+  const [focus, setFocus] = useState<Set<Sezione>>(ALL)
+  // con tutte le sezioni attive il primo clic isola la sezione; svuotando la selezione si torna a tutte
+  const toggle = (k: Sezione) =>
+    setFocus((cur) => {
+      if (cur.size === ALL.size) return new Set([k])
+      const next = new Set(cur)
+      if (next.has(k)) next.delete(k)
+      else next.add(k)
+      return next.size ? next : ALL
+    })
+
   if (!stats) return <aside className="sidebar">{loading && <div className="sb-loading">Caricamento…</div>}</aside>
 
   const nd = stats.n_giorni || 1
@@ -66,148 +91,83 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
 
   const fasce = Object.keys(FASCE).map((k) => stats.per_fascia.find((r) => r.fascia === k)?.media ?? 0)
 
-  return (
-    <aside className={`sidebar ${loading ? 'is-loading' : ''}`}>
-      <div className="sb-context">
-        {selection?.type === 'nodo' && (
-          <>
-            <span className="tag">Zona selezionata</span>
-            <h2>{nameOf(selection.id)}</h2>
-            <p>Spostamenti in partenza, in arrivo e interni alla zona</p>
-          </>
-        )}
-        {selection?.type === 'link' && (
-          <>
-            <span className="tag">Relazione selezionata</span>
-            <h2>
-              {nameOf(selection.a)} ⇄ {nameOf(selection.b)}
-            </h2>
-            <p>Spostamenti nelle due direzioni tra le zone</p>
-          </>
-        )}
-        {!selection && (
-          <>
-            <span className="tag">Area di studio</span>
-            <h2>Tutti gli spostamenti</h2>
-            <p>Clicca una zona o un flusso sulla mappa per approfondire</p>
-          </>
-        )}
-      </div>
+  const nodo = stats.kpi.nodo
+  const linkA = selection?.type === 'link' ? selection.a : null
 
-      <div className="kpi-grid">
-        <Kpi label="Spostamenti medi / giorno" value={fmt(stats.kpi.media_giornaliera)} sub={`su ${stats.kpi.giorni} giorni`} />
-        <Kpi label="Spostamenti nel periodo" value={fmt(total)} />
-        <Kpi label="Quota di scambio" value={fmtPct(stats.kpi.quota_scambio)} sub="da/verso fuori regione" />
-        <Kpi label="Viaggiatori stranieri" value={fmtPct(stats.kpi.quota_internazionali)} sub="nazionalità internazionale" />
-      </div>
-
-      {stats.kpi.nodo && (
+  const items: Item[] = [
+    {
+      id: 'kpi',
+      sezione: 'panoramica',
+      keywords: 'indicatori kpi spostamenti totale media giornaliera quota scambio stranieri',
+      render: () => (
+        <div className="kpi-grid">
+          <Kpi label="Spostamenti medi / giorno" value={fmt(stats.kpi.media_giornaliera)} sub={`su ${stats.kpi.giorni} giorni`} />
+          <Kpi label="Spostamenti nel periodo" value={fmt(total)} />
+          <Kpi label="Quota di scambio" value={fmtPct(stats.kpi.quota_scambio)} sub="da/verso fuori regione" />
+          <Kpi label="Viaggiatori stranieri" value={fmtPct(stats.kpi.quota_internazionali)} sub="nazionalità internazionale" />
+        </div>
+      ),
+    },
+    {
+      id: 'bilancio',
+      sezione: 'panoramica',
+      keywords: 'bilancio zona uscita ingresso interni',
+      show: Boolean(stats.kpi.nodo),
+      render: () => (
         <Card title="Bilancio della zona" subtitle="Spostamenti medi giornalieri">
           <StackBar
             items={[
-              { label: 'In uscita', value: perDay(stats.kpi.nodo.uscita), color: COLORS.out },
-              { label: 'In ingresso', value: perDay(stats.kpi.nodo.ingresso), color: COLORS.in },
-              { label: 'Interni', value: perDay(stats.kpi.nodo.interni), color: COLORS.secondary },
+              { label: 'In uscita', value: perDay(nodo?.uscita ?? 0), color: COLORS.out },
+              { label: 'In ingresso', value: perDay(nodo?.ingresso ?? 0), color: COLORS.in },
+              { label: 'Interni', value: perDay(nodo?.interni ?? 0), color: COLORS.secondary },
             ]}
           />
         </Card>
-      )}
-
-      {selection?.type === 'link' && (
+      ),
+    },
+    {
+      id: 'direzioni',
+      sezione: 'panoramica',
+      keywords: 'direzioni relazione andata ritorno',
+      show: selection?.type === 'link',
+      render: () => (
         <Card title="Direzioni" subtitle="Spostamenti medi giornalieri">
           <StackBar
             items={[...stats.top_od]
-              .sort((x, y) => Number(y.o === selection.a) - Number(x.o === selection.a))
+              .sort((x, y) => Number(y.o === linkA) - Number(x.o === linkA))
               .map((r) => ({
                 label: `${r.o_nome} → ${r.d_nome}`,
                 value: r.media,
-                color: r.o === selection.a ? COLORS.out : COLORS.in,
+                color: r.o === linkA ? COLORS.out : COLORS.in,
               }))}
           />
         </Card>
-      )}
-
-      <Card title="Andamento giornaliero" subtitle="Spostamenti totali per giorno · in grigio scuro il fine settimana">
-        <LineDaily
-          labels={stats.giornaliero.map((d) => fmtDate(d.giorno, { day: 'numeric', month: 'numeric' }))}
-          values={stats.giornaliero.map((d) => d.n)}
-          weekend={stats.giornaliero.map((d) => d.dow >= 6)}
-        />
-      </Card>
-
-      <Card title="Giorno della settimana" subtitle="Spostamenti medi per giorno">
-        <BarChart
-          labels={DOW.map((d) => d.short)}
-          values={stats.per_dow.map((d) => d.media)}
-          colors={stats.per_dow.map((d) => (d.dow >= 6 ? COLORS.secondary : COLORS.accent))}
-        />
-      </Card>
-
-      <Card title="Fascia oraria di partenza" subtitle="Spostamenti medi giornalieri per fascia">
-        <BarChart labels={Object.keys(FASCE).map((k) => `${FASCE[k]}\n${fasceOre[k] ?? ''}`)} values={fasce} color={COLORS.accent} height={200} />
-      </Card>
-
-      <Card title="Motivo dello spostamento" subtitle="Origine (righe) → destinazione (colonne): Casa = luogo di residenza, Lavoro = luogo di lavoro, Altro = luogo visitato">
-        <Heatmap
-          rows={MOTIVI_ORDER.map((m) => MOTIVI[m])}
-          cols={MOTIVI_ORDER.map((m) => MOTIVI[m])}
-          values={mot}
-          total={total}
-        />
-        <ol className="rank">
-          {motRank.slice(0, 5).map((r) => (
-            <li key={r.label}>
-              <span>{r.label}</span>
-              <span className="rank-bar">
-                <i style={{ width: `${(r.n / motRank[0].n) * 100}%` }} />
-              </span>
-              <b>{fmtPct(r.n / total)}</b>
-            </li>
-          ))}
-        </ol>
-      </Card>
-
-      <Card title="Genere" subtitle={naDemo > 0 ? `N/D: viaggiatori stranieri, senza profilo sociodemografico` : undefined}>
-        <Donut height={190}
-          items={[
-            { name: GENERI.f, value: perDay(genere('f')), color: COLORS.purple },
-            { name: GENERI.m, value: perDay(genere('m')), color: COLORS.accent },
-            { name: GENERI.NA, value: perDay(naDemo), color: COLORS.grey },
-          ]}
-        />
-      </Card>
-
-      <Card title="Età e genere" subtitle="Spostamenti medi giornalieri per fascia d'età">
-        <GroupedBars
-          labels={ETA.filter((e) => e !== 'NA').map(etaLabel)}
-          series={[
-            { name: GENERI.f, values: etaBy('f'), color: COLORS.purple },
-            { name: GENERI.m, values: etaBy('m'), color: COLORS.accent },
-          ]}
-        />
-      </Card>
-
-      <Card title="Profilo dei viaggiatori" subtitle="Spostamenti medi giornalieri">
-        <h4 className="mini">Nazionalità</h4>
-        <StackBar
-          items={Object.entries(NAZIONALITA).map(([k, label], i) => ({
-            label,
-            value: perDay(stats.nazionalita[k] ?? 0),
-            color: i ? COLORS.secondary : COLORS.accent,
-          }))}
-        />
-        <h4 className="mini">Tipologia di spostamento</h4>
-        <StackBar
-          items={Object.entries(TIPOLOGIE).map(([k, label], i) => ({
-            label,
-            value: perDay(stats.tipologia[k] ?? 0),
-            color: i ? COLORS.secondary : COLORS.accent,
-          }))}
-        />
-      </Card>
-
-      {selection?.type !== 'link' && (
+      ),
+    },
+    {
+      id: 'giornaliero',
+      sezione: 'panoramica',
+      keywords: 'andamento giornaliero date giorni trend calendario',
+      render: () => (
+        <Card title="Andamento giornaliero" subtitle="Spostamenti totali per giorno · in grigio scuro il fine settimana">
+          <LineDaily
+            labels={stats.giornaliero.map((d) => fmtDate(d.giorno, { day: 'numeric', month: 'numeric' }))}
+            values={stats.giornaliero.map((d) => d.n)}
+            weekend={stats.giornaliero.map((d) => d.dow >= 6)}
+          />
+        </Card>
+      ),
+    },
+    {
+      id: 'top_od',
+      sezione: 'panoramica',
+      keywords: 'principali relazioni od origine destinazione coppie flussi classifica',
+      show: selection?.type !== 'link',
+      render: () => (
         <Card title="Principali relazioni OD" subtitle="Spostamenti medi giornalieri · clic per selezionare">
+          {stats.top_od.length === 0 && (
+            <p className="sb-empty">Nessuna relazione tra zone diverse con i filtri attivi: gli spostamenti sono tutti interni alle zone.</p>
+          )}
           <table className="od-table">
             <tbody>
               {stats.top_od.map((r, i) => (
@@ -222,6 +182,197 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
             </tbody>
           </table>
         </Card>
+      ),
+    },
+    {
+      id: 'dow',
+      sezione: 'comportamenti',
+      keywords: 'giorno settimana feriale weekend fine settimana',
+      render: () => (
+        <Card title="Giorno della settimana" subtitle="Spostamenti medi per giorno">
+          <BarChart
+            labels={DOW.map((d) => d.short)}
+            values={stats.per_dow.map((d) => d.media)}
+            colors={stats.per_dow.map((d) => (d.dow >= 6 ? COLORS.secondary : COLORS.accent))}
+          />
+        </Card>
+      ),
+    },
+    {
+      id: 'fascia',
+      sezione: 'comportamenti',
+      keywords: 'fascia oraria orari ora partenza punta mattina sera notte',
+      render: () => (
+        <Card title="Fascia oraria di partenza" subtitle="Spostamenti medi giornalieri per fascia">
+          <BarChart labels={Object.keys(FASCE).map((k) => `${FASCE[k]}\n${fasceOre[k] ?? ''}`)} values={fasce} color={COLORS.accent} height={200} />
+        </Card>
+      ),
+    },
+    {
+      id: 'motivo',
+      sezione: 'comportamenti',
+      keywords: 'motivo scopo casa lavoro altro visita pendolari',
+      render: () => (
+        <Card title="Motivo dello spostamento" subtitle="Origine (righe) → destinazione (colonne): Casa = luogo di residenza, Lavoro = luogo di lavoro, Altro = luogo visitato">
+          <Heatmap
+            rows={MOTIVI_ORDER.map((m) => MOTIVI[m])}
+            cols={MOTIVI_ORDER.map((m) => MOTIVI[m])}
+            values={mot}
+            total={total}
+          />
+          <ol className="rank">
+            {motRank.slice(0, 5).map((r) => (
+              <li key={r.label}>
+                <span>{r.label}</span>
+                <span className="rank-bar">
+                  <i style={{ width: `${(r.n / motRank[0].n) * 100}%` }} />
+                </span>
+                <b>{fmtPct(r.n / total)}</b>
+              </li>
+            ))}
+          </ol>
+        </Card>
+      ),
+    },
+    {
+      id: 'tipologia',
+      sezione: 'comportamenti',
+      keywords: 'tipologia interno scambio extra regione',
+      render: () => (
+        <Card title="Tipologia di spostamento" subtitle="Spostamenti medi giornalieri">
+          <StackBar
+            items={Object.entries(TIPOLOGIE).map(([k, label], i) => ({
+              label,
+              value: perDay(stats.tipologia[k] ?? 0),
+              color: i ? COLORS.secondary : COLORS.accent,
+            }))}
+          />
+        </Card>
+      ),
+    },
+    {
+      id: 'genere',
+      sezione: 'profili',
+      keywords: 'genere sesso donne uomini femmina maschio',
+      render: () => (
+        <Card title="Genere" subtitle={naDemo > 0 ? `N/D: viaggiatori stranieri, senza profilo sociodemografico` : undefined}>
+          <Donut height={190}
+            items={[
+              { name: GENERI.f, value: perDay(genere('f')), color: COLORS.purple },
+              { name: GENERI.m, value: perDay(genere('m')), color: COLORS.accent },
+              { name: GENERI.NA, value: perDay(naDemo), color: COLORS.grey },
+            ]}
+          />
+        </Card>
+      ),
+    },
+    {
+      id: 'eta',
+      sezione: 'profili',
+      keywords: 'età eta fasce anni giovani anziani genere',
+      render: () => (
+        <Card title="Età e genere" subtitle="Spostamenti medi giornalieri per fascia d'età">
+          <GroupedBars
+            labels={ETA.filter((e) => e !== 'NA').map(etaLabel)}
+            series={[
+              { name: GENERI.f, values: etaBy('f'), color: COLORS.purple },
+              { name: GENERI.m, values: etaBy('m'), color: COLORS.accent },
+            ]}
+          />
+        </Card>
+      ),
+    },
+    {
+      id: 'nazionalita',
+      sezione: 'profili',
+      keywords: 'nazionalità stranieri italiani turisti internazionale',
+      render: () => (
+        <Card title="Nazionalità" subtitle="Spostamenti medi giornalieri">
+          <StackBar
+            items={Object.entries(NAZIONALITA).map(([k, label], i) => ({
+              label,
+              value: perDay(stats.nazionalita[k] ?? 0),
+              color: i ? COLORS.secondary : COLORS.accent,
+            }))}
+          />
+        </Card>
+      ),
+    },
+  ]
+
+  const q = query.trim().toLowerCase()
+  // la ricerca guarda tutte le sezioni; senza ricerca valgono le sezioni attive
+  const match = (it: Item) =>
+    (it.show ?? true) && (q ? `${it.keywords} ${SEZIONI[it.sezione]}`.includes(q) : focus.has(it.sezione))
+  const visible = items.filter(match)
+
+  return (
+    <aside className={`sidebar ${loading ? 'is-loading' : ''}`}>
+      <div className="sb-top">
+        <div className="sb-context">
+          <h2>Metriche &amp; Insights</h2>
+          <p>
+            {selection?.type === 'nodo' && (
+              <>
+                Zona selezionata: <b>{nameOf(selection.id)}</b>
+              </>
+            )}
+            {selection?.type === 'link' && (
+              <>
+                Relazione: <b>{nameOf(selection.a)}</b> ⇄ <b>{nameOf(selection.b)}</b>
+              </>
+            )}
+            {!selection && <>Tutta l'area di studio · clicca una zona o un flusso sulla mappa per approfondire</>}
+          </p>
+        </div>
+        <div className="sb-finder">
+          <label className="sb-search">
+            <IconSearch />
+            <input
+              id="metric-search"
+              type="search"
+              placeholder="Cerca una metrica: età, orari, motivo…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          <div className="sb-chips" role="group" aria-label="Sezioni visibili">
+            {(Object.keys(SEZIONI) as Sezione[]).map((k) => {
+              const n = items.filter((it) => it.sezione === k && (it.show ?? true)).length
+              return (
+                <button
+                  key={k}
+                  className={!q && focus.has(k) ? 'on' : ''}
+                  aria-pressed={focus.has(k)}
+                  onClick={() => {
+                    setQuery('')
+                    toggle(k)
+                  }}
+                >
+                  {SEZIONI[k]} <span>{n}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {(Object.keys(SEZIONI) as Sezione[]).map((k) => {
+        const list = visible.filter((it) => it.sezione === k)
+        if (!list.length) return null
+        return (
+          <section key={k} className="sb-section">
+            <h3 className="sb-section-title">{SEZIONI[k]}</h3>
+            {list.map((it) => (
+              <div key={it.id}>{it.render()}</div>
+            ))}
+          </section>
+        )
+      })}
+      {visible.length === 0 && (
+        <p className="sb-empty">
+          Nessuna metrica per «{query}». Prova con un altro termine, ad esempio età, orari o motivo.
+        </p>
       )}
       <footer className="sb-foot">Fonte: estrazione matrice OD Piemonte. I valori sono stime, arrotondate in visualizzazione.</footer>
     </aside>
