@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EMPTY_FILTERS, buildQuery, getJSON, type Filters, type Flows, type Livello, type Meta, type Selection, type Stats } from './api'
-import { useApi } from './hooks'
+import { useApi, useClickOutside } from './hooks'
 import { isStatic } from './local/client'
 import { COLORS, fmt, fmtDate } from './labels'
 import FilterBar from './components/FilterBar'
 import FlowMap, { type NodeInfo } from './components/FlowMap'
 import Sidebar from './components/Sidebar'
-import { IconAce, IconComune, IconProvincia } from './components/icons'
 
 const EXTRA_REGION_OFFSET = 900_000
 // slider dei flussi su scala logaritmica: più precisione sui valori bassi
@@ -18,11 +17,48 @@ const fromSlider = (v: number) => {
   return n < 100 ? Math.round(n / 5) * 5 : n < 1000 ? Math.round(n / 10) * 10 : Math.round(n / 50) * 50
 }
 
-const LIVELLI: { id: Livello; label: string; hint: string; Icon: typeof IconAce }[] = [
-  { id: 'ace', label: 'ACE ISTAT', hint: 'Aree di censimento ISTAT: subcomunali nei comuni maggiori', Icon: IconAce },
-  { id: 'comune', label: 'Comuni', hint: 'Comuni del Piemonte', Icon: IconComune },
-  { id: 'provincia', label: 'Province', hint: 'Province', Icon: IconProvincia },
+const LIVELLI: { id: Livello; label: string; hint: string }[] = [
+  { id: 'ace', label: 'ACE ISTAT', hint: 'Aree di censimento, subcomunali nei comuni maggiori' },
+  { id: 'comune', label: 'Comuni', hint: 'Confini comunali' },
+  { id: 'provincia', label: 'Province', hint: 'Confini provinciali' },
 ]
+
+function ZoningSelect({ value, onChange }: { value: Livello; onChange: (l: Livello) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const close = useCallback(() => setOpen(false), [])
+  useClickOutside(ref, close, open)
+  const current = LIVELLI.find((l) => l.id === value)!
+  return (
+    <div className={`zoning ${open ? 'open' : ''}`} ref={ref}>
+      <button className="zoning-btn" onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}>
+        <span className="zoning-label">Zonizzazione</span>
+        <span className="zoning-value">{current.label}</span>
+        <span className="zoning-caret">▾</span>
+      </button>
+      {open && (
+        <ul className="zoning-menu" role="listbox" aria-label="Zonizzazione">
+          {LIVELLI.map((l) => (
+            <li key={l.id}>
+              <button
+                role="option"
+                aria-selected={l.id === value}
+                className={l.id === value ? 'on' : ''}
+                onClick={() => {
+                  onChange(l.id)
+                  close()
+                }}
+              >
+                <span>{l.label}</span>
+                <small>{l.hint}</small>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 interface UrlState {
   livello: Livello
@@ -38,7 +74,6 @@ function readUrl(): UrlState {
   const filters = Object.fromEntries(Object.keys(EMPTY_FILTERS).map((k) => [k, list(k)])) as unknown as Filters
   filters.dow = (filters.dow as unknown as string[]).map(Number)
   filters.periodo = q.get('da') && q.get('a') ? [q.get('da')!, q.get('a')!] : []
-  filters.od = q.get('od') === 'or' ? ['or'] : []
   const nodo = q.get('nodo')
   const link = q.get('link')?.split(',').map(Number)
   return {
@@ -55,6 +90,7 @@ export default function App() {
   const [filters, setFilters] = useState<Filters>(initial.filters)
   const [selection, setSelection] = useState<Selection>(initial.selection)
   const [limit, setLimit] = useState(initial.limit)
+  const [panelOpen, setPanelOpen] = useState(false)
   const [geo, setGeo] = useState<{ ace: any; comuni: any; province: any }>({ ace: null, comuni: null, province: null })
 
   const { data: meta, error: metaError } = useApi<Meta>('/api/meta', 0)
@@ -130,25 +166,7 @@ export default function App() {
             {fmtDate(meta.periodo.a, { day: 'numeric', month: 'long', year: 'numeric' })}
           </span>
         </div>
-        <div className="zoning">
-          <span className="zoning-label">Zonizzazione</span>
-          <div className="zoning-track" role="radiogroup" aria-label="Zonizzazione">
-            <span className="zoning-thumb" style={{ transform: `translateX(${LIVELLI.findIndex((l) => l.id === livello) * 100}%)` }} />
-            {LIVELLI.map(({ id, label, hint, Icon }) => (
-              <button
-                key={id}
-                role="radio"
-                aria-checked={livello === id}
-                className={livello === id ? 'on' : ''}
-                onClick={() => changeLivello(id)}
-                title={hint}
-              >
-                <Icon />
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <ZoningSelect value={livello} onChange={changeLivello} />
       </header>
 
       <FilterBar meta={meta} filters={filters} onChange={setFilters} />
@@ -193,49 +211,55 @@ export default function App() {
             </div>
           )}
 
-          <div className="map-panel">
-            <label className="mp-row" htmlFor="flow-limit">
+          <div className={`map-panel ${panelOpen ? 'open' : ''}`}>
+            <button className="mp-toggle" onClick={() => setPanelOpen((o) => !o)} aria-expanded={panelOpen} aria-controls="mp-body">
               <span>Flussi mostrati</span>
               <b className="mp-value">{fmt(f ? Math.min(limit, f.coppie_totali) : limit)}</b>
-            </label>
-            <input
-              id="flow-limit"
-              className="slider"
-              type="range"
-              min={0}
-              max={100}
-              value={toSlider(limit)}
-              style={{ '--fill': `${toSlider(limit)}%` } as React.CSSProperties}
-              onChange={(e) => setLimit(fromSlider(Number(e.target.value)))}
-            />
-            <div className="slider-scale">
-              <span>{FLOW_MIN}</span>
-              <span>principali</span>
-              <span>{fmt(FLOW_MAX)}</span>
-            </div>
-            {f && (
-              <p className="mp-note">
-                {fmt(Math.min(limit, f.coppie_totali))} di {fmt(f.coppie_totali)} relazioni attive ·{' '}
-                {fmt(f.volume_flussi)} spostamenti medi/giorno tra zone diverse
-              </p>
+              <span className="mp-caret">▾</span>
+            </button>
+            {panelOpen && (
+              <div id="mp-body" className="mp-body">
+                <input
+                  id="flow-limit"
+                  aria-label="Numero di flussi mostrati"
+                  className="slider"
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={toSlider(limit)}
+                  style={{ '--fill': `${toSlider(limit)}%` } as React.CSSProperties}
+                  onChange={(e) => setLimit(fromSlider(Number(e.target.value)))}
+                />
+                <div className="slider-scale">
+                  <span>{FLOW_MIN}</span>
+                  <span>principali</span>
+                  <span>{fmt(FLOW_MAX)}</span>
+                </div>
+                {f && (
+                  <p className="mp-note">
+                    {fmt(Math.min(limit, f.coppie_totali))} di {fmt(f.coppie_totali)} relazioni attive ·{' '}
+                    {fmt(f.volume_flussi)} spostamenti medi/giorno tra zone diverse
+                  </p>
+                )}
+                <div className="legend">
+                  {selection ? (
+                    <>
+                      <span>
+                        <i style={{ background: COLORS.out }} /> {selection.type === 'nodo' ? 'In uscita' : `Da ${nameOf(selection.a)}`}
+                      </span>
+                      <span>
+                        <i style={{ background: COLORS.in }} /> {selection.type === 'nodo' ? 'In ingresso' : `Da ${nameOf(selection.b)}`}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="grad">
+                      <i /> spostamenti medi/giorno: più intenso e opaco = flusso maggiore
+                    </span>
+                  )}
+                </div>
+                <p className="mp-hint">Clic su una zona: flussi in ingresso e uscita · clic su un flusso: relazione tra le due zone</p>
+              </div>
             )}
-            <div className="legend">
-              {selection ? (
-                <>
-                  <span>
-                    <i style={{ background: COLORS.out }} /> {selection.type === 'nodo' ? 'In uscita' : `Da ${nameOf(selection.a)}`}
-                  </span>
-                  <span>
-                    <i style={{ background: COLORS.in }} /> {selection.type === 'nodo' ? 'In ingresso' : `Da ${nameOf(selection.b)}`}
-                  </span>
-                </>
-              ) : (
-                <span className="grad">
-                  <i /> spostamenti medi/giorno: più intenso e opaco = flusso maggiore
-                </span>
-              )}
-            </div>
-            <p className="mp-hint">Clic su una zona: flussi in ingresso e uscita · clic su un flusso: relazione tra le due zone</p>
           </div>
 
           {progress !== null && progress < 1 ? (

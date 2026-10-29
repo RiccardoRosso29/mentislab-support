@@ -35,7 +35,6 @@ export default function FilterBar({ meta, filters, onChange }: Props) {
 
   const fasciaOptions = meta.fasce.map((f) => ({ value: f.id, label: FASCE[f.id] ?? f.id, hint: `${f.da}–${f.a + 1}` }))
   const active = hasActiveFilters(filters)
-  const or = filters.od[0] === 'or'
 
   return (
     <div className="filterbar">
@@ -48,25 +47,7 @@ export default function FilterBar({ meta, filters, onChange }: Props) {
         width={200}
       />
       <MultiSelect label="Fascia oraria" options={fasciaOptions} value={filters.fascia} onChange={set('fascia')} width={230} />
-      <div className="od-group">
-        <MultiSelect label="Origine" options={zoneOptions} value={filters.origine} onChange={set('origine')} searchable width={300} />
-        <div
-          className="od-switch"
-          role="radiogroup"
-          aria-label="Combinazione di origine e destinazione"
-          title={
-            or
-              ? 'O: spostamenti con origine OPPURE destinazione tra le zone scelte'
-              : 'E: spostamenti con origine E destinazione tra le zone scelte (es. Torino → Torino = spostamenti interni)'
-          }
-        >
-          <button role="radio" aria-checked={!or} className={or ? '' : 'on'} onClick={() => set('od')([])}>
-            E
-          </button>
-          <button role="radio" aria-checked={or} className={or ? 'on' : ''} onClick={() => set('od')(['or'])}>
-            O
-          </button>
-        </div>
+      <MultiSelect label="Origine" options={zoneOptions} value={filters.origine} onChange={set('origine')} searchable width={300} />
       <MultiSelect
         label="Destinazione"
         options={zoneOptions}
@@ -75,7 +56,6 @@ export default function FilterBar({ meta, filters, onChange }: Props) {
         searchable
         width={300}
       />
-      </div>
       <MultiSelect
         label="Motivo"
         options={MOTIVO_PAIRS.map((p) => ({ value: p, label: motivoPairLabel(p) }))}

@@ -43,7 +43,6 @@ export interface Meta {
 
 export interface Filters {
   periodo: string[] // [] oppure [da, a] in formato ISO
-  od: string[] // [] = origine E destinazione, ['or'] = origine O destinazione
   dow: number[]
   fascia: string[]
   motivo: string[] // "mo>md"
@@ -91,7 +90,6 @@ export interface Flows {
 
 export const EMPTY_FILTERS: Filters = {
   periodo: [],
-  od: [],
   dow: [],
   fascia: [],
   motivo: [],
@@ -118,9 +116,7 @@ export function buildQuery(livello: Livello, f: Filters, sel: Selection, extra: 
   return q.toString()
 }
 
-/** Filtri che restringono i dati (la modalità E/O da sola non è un filtro attivo). */
-export const hasActiveFilters = (f: Filters) =>
-  Object.entries(f).some(([k, v]) => k !== 'od' && v.length > 0)
+export const hasActiveFilters = (f: Filters) => Object.values(f).some((v) => v.length > 0)
 
 export async function getJSON<T>(url: string, signal?: AbortSignal): Promise<T> {
   if (isStatic && url.startsWith('/api/')) return localApi<T>(url, signal)

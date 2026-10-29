@@ -118,8 +118,12 @@ button { cursor: pointer; }
 .sel-chip button { background: transparent; border: 0; color: #ccc; font-size: 14px; padding: 2px 6px; }
 .sel-chip button:hover { color: #fff; }
 
-.map-panel { position: absolute; top: 14px; right: 14px; width: 300px; background: rgba(255, 255, 255, 0.96); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12); padding: 10px 12px; font-family: var(--head); font-size: 12px; }
-.mp-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 600; }
+.map-panel { position: absolute; top: 14px; right: 14px; width: 220px; transition: width 0.15s; background: rgba(255, 255, 255, 0.96); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12); padding: 10px 12px; font-family: var(--head); font-size: 12px; }
+.mp-toggle { width: 100%; display: flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 0; font-size: 12px; font-weight: 600; }
+.mp-toggle .mp-value { margin-left: auto; }
+.mp-caret { font-size: 10px; color: var(--muted); transition: transform 0.2s; }
+.map-panel.open .mp-caret { transform: rotate(180deg); }
+.mp-body { margin-top: 6px; }
 .mp-note { color: var(--muted); margin-top: 6px; font-size: 11.5px; }
 .mp-hint { color: #999; margin-top: 6px; font-size: 11px; }
 .legend { display: flex; gap: 14px; margin-top: 8px; }
@@ -137,8 +141,8 @@ button { cursor: pointer; }
   body { overflow: auto; }
   .app { height: auto; min-height: 100%; }
   .topbar { height: auto; flex-wrap: wrap; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .zoning { margin-left: 0; align-items: flex-start; }
-  .zoning-track button { padding: 6px 10px; }
+  .zoning { margin-left: 0; }
+  .zoning-menu { left: 0; right: auto; }
   .filterbar { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .ms-btn { min-width: 0; }
   .ms-panel { max-width: calc(100vw - 32px); }
@@ -150,23 +154,22 @@ button { cursor: pointer; }
 }
 
 /* ---- zonizzazione ---- */
-.zoning { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.zoning { margin-left: auto; position: relative; }
+.zoning-btn { display: flex; align-items: center; gap: 10px; background: #262626; border: 1px solid #3a3a3a; border-radius: 6px; padding: 7px 12px; color: #fff; min-width: 210px; transition: border-color 0.2s; }
+.zoning-btn:hover, .zoning.open .zoning-btn { border-color: var(--accent); }
 .zoning-label { font-size: 9.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #8f8f8f; }
-.zoning-track { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); background: #262626; border: 1px solid #3a3a3a; border-radius: 999px; padding: 3px; }
-.zoning-thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / 3); border-radius: 999px; background: linear-gradient(180deg, #f59a3c, var(--accent-dark)); box-shadow: 0 2px 8px rgba(242, 140, 40, 0.35); transition: transform 0.28s cubic-bezier(0.3, 0.7, 0.2, 1); }
-.zoning-track button { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 6px; background: transparent; border: 0; color: #bdbdbd; font-family: var(--head); font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 999px; white-space: nowrap; transition: color 0.2s; }
-.zoning-track button:hover { color: #fff; }
-.zoning-track button.on { color: #fff; }
-.zoning-track button:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
-.zoning-track svg { width: 14px; height: 14px; }
-@media (prefers-reduced-motion: reduce) { .zoning-thumb { transition: none; } }
+.zoning-value { font-size: 13px; font-weight: 600; flex: 1; text-align: left; }
+.zoning-caret { font-size: 10px; color: var(--accent); transition: transform 0.2s; }
+.zoning.open .zoning-caret { transform: rotate(180deg); }
+.zoning-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; list-style: none; background: #fff; border-radius: 6px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28); padding: 6px; min-width: 100%; width: 260px; }
+.zoning-menu button { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; border: 0; background: transparent; padding: 8px 10px 8px 12px; border-radius: 4px; text-align: left; border-left: 3px solid transparent; }
+.zoning-menu button span { font-size: 13px; font-weight: 600; }
+.zoning-menu button small { font-size: 11px; color: var(--muted); }
+.zoning-menu button:hover { background: #fbf3ea; }
+.zoning-menu button.on { border-left-color: var(--accent); background: #fdf3e8; }
+.zoning-menu button.on span { color: var(--accent-dark); }
 
 /* ---- filtri: E/O, date, reset ---- */
-.od-group { display: flex; align-items: center; gap: 4px; }
-.od-switch { display: flex; height: 32px; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: #fff; padding: 2px; gap: 2px; }
-.od-switch button { border: 0; background: transparent; font-size: 11px; font-weight: 700; width: 26px; padding: 0; color: var(--muted); border-radius: 999px; }
-.od-switch button:hover:not(.on) { color: var(--text); }
-.od-switch button.on { background: var(--dark); color: #fff; }
 .ms-icon { width: 14px; height: 14px; color: var(--muted); flex-shrink: 0; }
 .ms.active .ms-icon { color: var(--accent-dark); }
 .filterbar .reset { display: flex; align-items: center; justify-content: center; width: 34px; height: 32px; padding: 0; color: var(--text); }
@@ -198,6 +201,7 @@ button { cursor: pointer; }
 .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
 .slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); }
 .slider:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.map-panel.open { width: 300px; }
 .slider-scale { display: flex; justify-content: space-between; font-size: 10px; color: #9a9a9a; margin-top: -2px; }
 
 /* ---- pannello metriche ---- */

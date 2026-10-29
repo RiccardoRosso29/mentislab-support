@@ -160,7 +160,6 @@ interface Filters {
   destinazione: ZoneSel
   nodo: number | null
   link: [number, number] | null
-  od: 'and' | 'or'
   da: string | null
   a: string | null
 }
@@ -211,7 +210,6 @@ function parse(q: URLSearchParams): Filters {
     origine: zones(q.get('origine')),
     destinazione: zones(q.get('destinazione')),
     nodo: q.get('nodo') ? Number(q.get('nodo')) : null,
-    od: q.get('od') === 'or' ? 'or' : 'and',
     da: DATE.test(q.get('da') ?? '') ? q.get('da') : null,
     a: DATE.test(q.get('a') ?? '') ? q.get('a') : null,
     link: link.length === 2 ? [link[0], link[1]] : null,
@@ -249,11 +247,6 @@ function compute(d: Data, f: Filters): Result {
   const sideOk = (sel: ZoneSel, a: number, c: number, p: number) =>
     empty(sel) || sel.prov.has(p) || sel.zone.has(c) || sel.ace.has(a)
 
-  // senza filtri su un lato quel lato non vincola; in modalità "or" basta che uno dei lati filtrati sia soddisfatto
-  const anyO = !empty(f.origine), anyD = !empty(f.destinazione)
-  const odOk = (okO: boolean, okD: boolean) =>
-    f.od === 'or' && anyO && anyD ? (anyO && okO) || (anyD && okD) : okO && okD
-
   const hist = new Float64Array(N_P1 * N_P2 * N_P3)
   const pairs = new Map<number, number>()
   const { pzo, pzd, pStart, p1, p2, p3, n, zoneId, zoneComune, zoneProv } = d
@@ -261,8 +254,9 @@ function compute(d: Data, f: Filters): Result {
 
   for (let p = 0; p < pzo.length; p++) {
     const io = pzo[p], id = pzd[p]
-    if (!odOk(sideOk(f.origine, zoneId[io], zoneComune[io], zoneProv[io]), sideOk(f.destinazione, zoneId[id], zoneComune[id], zoneProv[id])))
-      continue
+    // origine E destinazione: un lato senza filtri non vincola
+    if (!sideOk(f.origine, zoneId[io], zoneComune[io], zoneProv[io])) continue
+    if (!sideOk(f.destinazione, zoneId[id], zoneComune[id], zoneProv[id])) continue
     const ko = lvl.ofAce[io], kd = lvl.ofAce[id]
     const o = lvl.ids[ko], de = lvl.ids[kd]
     if (f.nodo !== null && o !== f.nodo && de !== f.nodo) continue
