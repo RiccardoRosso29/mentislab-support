@@ -179,6 +179,7 @@ export default function App() {
     return m
   }, [meta, livello])
   const nameOf = useCallback((id: number) => nodes.get(id)?.nome ?? `#${id}`, [nodes])
+  const selectLink = useCallback((a: number, b: number) => setSelection({ type: 'link', a, b }), [])
 
   const changeLivello = (l: Livello) => {
     setLivello(l)
@@ -234,7 +235,7 @@ export default function App() {
           selection={selection}
           nameOf={nameOf}
           fasceOre={fasceOre}
-          onSelectLink={(a, b) => setSelection({ type: 'link', a, b })}
+          onSelectLink={selectLink}
         />
         <section className="map-area">
           <FlowMap

@@ -337,7 +337,8 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
           return text ? { text, className: 'deck-tip' } : null
         }}
       >
-        {!isStatic && <MapGL mapStyle={BASEMAP} reuseMaps />}
+        {/* la mappa di base serve tessere esterne: esclusa solo dove l'hosting le blocca (Artifact) */}
+        {(!isStatic || import.meta.env.VITE_BASEMAP === '1') && <MapGL mapStyle={BASEMAP} reuseMaps />}
       </DeckGL>
     </div>
   )

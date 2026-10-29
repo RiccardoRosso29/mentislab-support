@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { memo, useState, type ReactNode } from 'react'
 import type { Selection, Stats } from '../api'
 import {
   COLORS,
@@ -59,7 +59,7 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
   )
 }
 
-export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink }: Props) {
+function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink }: Props) {
   const [focus, setFocus] = useState<Set<Sezione>>(ALL)
   // con tutte le sezioni attive il primo clic isola la sezione; svuotando la selezione si torna a tutte
   const toggle = (k: Sezione) =>
@@ -340,3 +340,6 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
     </aside>
   )
 }
+
+// il pannello non dipende dal playback: senza memo si ridisegnerebbe a ogni fotogramma
+export default memo(Sidebar)

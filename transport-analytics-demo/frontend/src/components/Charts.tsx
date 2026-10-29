@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 import { COLORS, fmt, fmtCompact, fmtPct } from '../labels'
@@ -27,7 +28,12 @@ const catAxis = (data: string[]) => ({
 })
 
 export function Chart({ option, height = 180 }: { option: EChartsOption; height?: number }) {
-  return <ReactECharts option={base(option)} style={{ height }} notMerge lazyUpdate opts={{ renderer: 'svg' }} />
+  // L'opzione contiene funzioni (formatter) e cambia identità a ogni render: la si ricrea solo quando
+  // cambiano i dati, altrimenti ECharts ridisegna il grafico da zero (effetto "lampeggio").
+  const key = JSON.stringify(option)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const opt = useMemo(() => base(option), [key])
+  return <ReactECharts option={opt} style={{ height }} notMerge lazyUpdate opts={{ renderer: 'svg' }} />
 }
 
 export function BarChart({

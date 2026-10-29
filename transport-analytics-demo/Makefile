@@ -33,3 +33,15 @@ static:             ## versione senza backend (motore nel browser) in frontend/d
 	cd frontend && rm -rf dist-static && VITE_STATIC=1 npx vite build --outDir dist-static
 	mkdir -p frontend/dist-static/data frontend/dist-static/geo
 	cp data/static/* frontend/dist-static/data/ && cp data/geo/*.geojson frontend/dist-static/geo/
+
+WEB_DIR = frontend/dist-web/transport-analytics
+
+web:                ## versione statica per hosting web (con mappa di base) in $(WEB_DIR)
+	python pipeline/export_static.py
+	cd frontend && rm -rf dist-web && VITE_STATIC=1 VITE_BASEMAP=1 npx vite build --outDir dist-web/transport-analytics
+	mkdir -p $(WEB_DIR)/data $(WEB_DIR)/geo
+	cp data/static/* $(WEB_DIR)/data/ && cp data/geo/*.geojson $(WEB_DIR)/geo/
+	cp frontend/deploy/vercel.json $(WEB_DIR)/
+
+deploy-vercel: web  ## pubblica su Vercel (richiede VERCEL_TOKEN)
+	cd $(WEB_DIR) && npx --yes vercel deploy --prod --yes --token "$$VERCEL_TOKEN"
