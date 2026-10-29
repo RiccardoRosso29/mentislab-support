@@ -191,7 +191,7 @@ export default function App() {
                 </>
               ) : (
                 <span className="grad">
-                  <i /> intensità del flusso (spostamenti medi/giorno)
+                  <i /> spostamenti medi/giorno: più intenso e opaco = flusso maggiore
                 </span>
               )}
             </div>

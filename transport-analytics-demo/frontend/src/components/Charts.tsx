@@ -33,7 +33,7 @@ export function Chart({ option, height = 180 }: { option: EChartsOption; height?
 export function BarChart({
   labels,
   values,
-  color = COLORS.blue,
+  color = COLORS.accent,
   colors,
   height,
   highlight,
@@ -195,7 +195,7 @@ export function LineDaily({
           {
             type: 'bar',
             barMaxWidth: 18,
-            data: values.map((v, i) => ({ value: v, itemStyle: { color: weekend[i] ? COLORS.yellow : COLORS.blue } })),
+            data: values.map((v, i) => ({ value: v, itemStyle: { color: weekend[i] ? COLORS.secondary : COLORS.accent } })),
           },
         ],
       }}

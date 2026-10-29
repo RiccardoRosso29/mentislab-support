@@ -35,10 +35,12 @@ const INITIAL_VIEW = { longitude: 7.95, latitude: 45.05, zoom: 7.3, pitch: 0, be
 
 const OUT: RGBA = [242, 140, 40, 220]
 const IN: RGBA = [111, 66, 193, 210]
-const NEUTRAL_LO: RGBA = [247, 200, 150, 110]
-const NEUTRAL_HI: RGBA = [224, 108, 0, 230]
+const NEUTRAL_LO: RGBA = [246, 178, 107, 30]
+const NEUTRAL_HI: RGBA = [224, 108, 0, 240]
 
 const lerp = (a: RGBA, b: RGBA, t: number): RGBA => a.map((v, i) => Math.round(v + (b[i] - v) * t)) as RGBA
+// l'opacità cresce con il volume: i flussi minori restano sullo sfondo
+const withAlpha = (c: RGBA, t: number): RGBA => [c[0], c[1], c[2], Math.round(40 + 210 * t)]
 
 /** Curva quadratica tra due punti, piegata a sinistra della direzione: A→B e B→A restano distinguibili. */
 function curve(a: [number, number], b: [number, number], steps = 24): [number, number][] {
@@ -83,9 +85,9 @@ export default function FlowMap({ livello, flows, nodes, comuni, province, selec
       const t = Math.sqrt(f.n / max)
       const color =
         selNode != null
-          ? f.o === selNode ? OUT : IN
+          ? withAlpha(f.o === selNode ? OUT : IN, t)
           : selection?.type === 'link'
-            ? f.o === selection.a ? OUT : IN
+            ? withAlpha(f.o === selection.a ? OUT : IN, Math.max(t, 0.7))
             : lerp(NEUTRAL_LO, NEUTRAL_HI, t)
       out.push({ ...f, path: curve([a.lon, a.lat], [b.lon, b.lat]), color, width: 1 + t * 11 })
     }
@@ -189,10 +191,11 @@ export default function FlowMap({ livello, flows, nodes, comuni, province, selec
       stroked: true,
       getPosition: (d: any) => [d.info.lon, d.info.lat],
       getRadius: (d: any) => 3 + 15 * Math.sqrt(d.tot / maxTot),
-      getFillColor: (d: any) => (selectedIds.has(d.info.id) ? [242, 140, 40, 255] : [40, 40, 40, 200]),
+      getFillColor: (d: any) =>
+        selectedIds.has(d.info.id) ? [242, 140, 40, 255] : [40, 40, 40, Math.round(70 + 170 * Math.sqrt(d.tot / maxTot))],
       getLineColor: [255, 255, 255, 255],
       lineWidthMinPixels: 1,
-      updateTriggers: { getFillColor: [selection] },
+      updateTriggers: { getFillColor: [selection, maxTot] },
     }),
     new TextLayer({
       id: 'etichette',

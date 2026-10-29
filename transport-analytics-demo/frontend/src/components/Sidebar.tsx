@@ -107,7 +107,7 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
             items={[
               { label: 'In uscita', value: perDay(stats.kpi.nodo.uscita), color: COLORS.out },
               { label: 'In ingresso', value: perDay(stats.kpi.nodo.ingresso), color: COLORS.in },
-              { label: 'Interni', value: perDay(stats.kpi.nodo.interni), color: COLORS.blue },
+              { label: 'Interni', value: perDay(stats.kpi.nodo.interni), color: COLORS.secondary },
             ]}
           />
         </Card>
@@ -127,7 +127,7 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
         </Card>
       )}
 
-      <Card title="Andamento giornaliero" subtitle="Spostamenti totali per giorno · in giallo il fine settimana">
+      <Card title="Andamento giornaliero" subtitle="Spostamenti totali per giorno · in grigio scuro il fine settimana">
         <LineDaily
           labels={stats.giornaliero.map((d) => fmtDate(d.giorno, { day: 'numeric', month: 'numeric' }))}
           values={stats.giornaliero.map((d) => d.n)}
@@ -139,7 +139,7 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
         <BarChart
           labels={DOW.map((d) => d.short)}
           values={stats.per_dow.map((d) => d.media)}
-          colors={stats.per_dow.map((d) => (d.dow >= 6 ? COLORS.yellow : COLORS.blue))}
+          colors={stats.per_dow.map((d) => (d.dow >= 6 ? COLORS.secondary : COLORS.accent))}
         />
       </Card>
 
@@ -193,7 +193,7 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
           items={Object.entries(NAZIONALITA).map(([k, label], i) => ({
             label,
             value: perDay(stats.nazionalita[k] ?? 0),
-            color: i ? COLORS.green : COLORS.blue,
+            color: i ? COLORS.secondary : COLORS.accent,
           }))}
         />
         <h4 className="mini">Tipologia di spostamento</h4>
@@ -201,7 +201,7 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
           items={Object.entries(TIPOLOGIE).map(([k, label], i) => ({
             label,
             value: perDay(stats.tipologia[k] ?? 0),
-            color: i ? COLORS.yellow : COLORS.blue,
+            color: i ? COLORS.secondary : COLORS.accent,
           }))}
         />
       </Card>
