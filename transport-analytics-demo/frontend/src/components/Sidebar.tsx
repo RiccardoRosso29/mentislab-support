@@ -97,10 +97,8 @@ export default function Sidebar({ stats, loading, selection, nameOf, fasceOre, o
       sezione: 'panoramica',
       render: () => (
         <div className="kpi-grid">
-          <Kpi label="Spostamenti medi / giorno" value={fmt(stats.kpi.media_giornaliera)} sub={`su ${stats.kpi.giorni} giorni`} />
+          <Kpi label="Spostamenti medi / giorno" value={fmt(stats.kpi.media_giornaliera)} />
           <Kpi label="Spostamenti nel periodo" value={fmt(total)} />
-          <Kpi label="Quota di scambio" value={fmtPct(stats.kpi.quota_scambio)} sub="da/verso fuori regione" />
-          <Kpi label="Viaggiatori stranieri" value={fmtPct(stats.kpi.quota_internazionali)} sub="nazionalità internazionale" />
         </div>
       ),
     },

@@ -137,11 +137,10 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
     return f.properties.piemonte ? -1 : extraRegionOffset + f.properties.id
   }
 
+  // aree neutre: il volume è già nei nodi e nei flussi; il colore evidenzia solo le zone selezionate
   const fillFor = (id: number): RGBA => {
-    if (selectedIds.has(id)) return [242, 140, 40, 110]
-    const t = nodeTotals.get(id)
-    if (!t) return [0, 0, 0, 0]
-    return [242, 140, 40, Math.round(12 + 70 * Math.sqrt(t.tot / maxTot))]
+    if (selectedIds.has(id)) return [242, 140, 40, 90]
+    return nodeTotals.has(id) ? [255, 255, 255, 110] : [255, 255, 255, 40]
   }
 
   const layers = [
