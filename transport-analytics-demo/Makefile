@@ -38,10 +38,11 @@ WEB_DIR = frontend/dist-web/transport-analytics
 
 web:                ## versione statica per hosting web (con mappa di base) in $(WEB_DIR)
 	python pipeline/export_static.py
-	cd frontend && rm -rf dist-web && VITE_STATIC=1 VITE_BASEMAP=1 npx vite build --outDir dist-web/transport-analytics
+	cd frontend && rm -rf dist-web && VITE_STATIC=1 VITE_BASEMAP=1 VITE_AGENT=1 npx vite build --outDir dist-web/transport-analytics
 	mkdir -p $(WEB_DIR)/data $(WEB_DIR)/geo
 	cp data/static/* $(WEB_DIR)/data/ && cp data/geo/*.geojson $(WEB_DIR)/geo/
-	cp frontend/deploy/vercel.json $(WEB_DIR)/
+	cp frontend/deploy/vercel.json frontend/deploy/package.json $(WEB_DIR)/
+	mkdir -p $(WEB_DIR)/api && cp frontend/deploy/api/*.js $(WEB_DIR)/api/
 
 deploy-vercel: web  ## pubblica su Vercel (richiede VERCEL_TOKEN)
 	cd $(WEB_DIR) && npx --yes vercel deploy --prod --yes --token "$$VERCEL_TOKEN"

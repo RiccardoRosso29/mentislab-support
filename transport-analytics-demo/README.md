@@ -75,6 +75,20 @@ make docker-up           # http://localhost:8000
 (caricamento ~4 s, aggiornamento < 1 s). È la versione pubblicata come Artifact; si può ospitare su qualunque
 hosting statico. Senza server la mappa di base Carto non viene caricata: restano i confini di comuni e province.
 
+## Assistente analitico (versione web)
+
+Pannello di chat (pulsante arancio in basso a destra sulla mappa) basato su `gpt-6.1-terra` (OpenAI Responses API).
+
+- `frontend/deploy/api/agent.js`: Vercel Function che custodisce la chiave (`OPENAI_API_KEY_TRIP`), definisce
+  istruzioni e strumenti e chiama il modello in modalità stateless (`store: false`, ragionamenti cifrati
+  rimandati dal client). Accetta richieste solo dalla pagina dell'app.
+- `frontend/src/agent/tools.ts`: strumenti eseguiti nel browser sul motore di calcolo (ricerca zone, statistiche
+  con profilo medio, relazioni, classifiche di zone, aggregazioni, grafici, tabelle, aggiornamento della
+  dashboard). Ogni conteggio sotto 100 arriva al modello come "<100".
+- `frontend/src/agent/AgentPanel.tsx`, `AgentVisual.tsx`: chat e grafici/tabelle nello stile della dashboard.
+
+L'assistente è incluso solo nella build web (`make web`, `VITE_AGENT=1`), non nella versione Artifact.
+
 ## Note sui dati
 
 - **Zone**: tre livelli di zonizzazione selezionabili. **ACE ISTAT** (aree di censimento: subcomunali per i
