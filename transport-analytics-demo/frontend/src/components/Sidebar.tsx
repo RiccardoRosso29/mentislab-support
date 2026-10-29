@@ -138,7 +138,6 @@ function Card({ title, subtitle, children, filtro }: CardProps) {
           )}
         </div>
         {subtitle && <p>{subtitle}</p>}
-        {filtro && <p className="card-hint">Clic per filtrare · Ctrl+clic per selezionare più valori</p>}
       </header>
       {children}
     </section>
@@ -203,6 +202,16 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
     const t = bx.motivi.reduce((s, r) => s + r.n, 0)
     return t > 0 ? (bx.motivi.find((r) => r.mo === mo && r.md === md)?.n ?? 0) / t : null
   }
+  const legendaSettimana = (
+    <p className="day-legend">
+      <span>
+        <i style={{ background: COLORS.accent }} /> Infrasettimanale
+      </span>
+      <span>
+        <i style={{ background: COLORS.secondary }} /> Weekend
+      </span>
+    </p>
+  )
   const benchNote = bx ? <p className="bench-note"><i /> Profilo medio dell’area di studio, riportato sul totale della selezione</p> : null
   const genereTot = (g: string) => cx.genere[g] ?? 0
   const etaBy = (g: string) => ETA.filter((e) => e !== 'NA').map((e) => perDay(cx.eta.find((r) => r.genere === g && r.eta === e)?.n ?? 0))
@@ -331,7 +340,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       render: () => (
         <Card
           title="Andamento giornaliero"
-          subtitle="Spostamenti totali per giorno · in grigio scuro il fine settimana"
+          subtitle="Spostamenti totali per giorno"
           filtro={{ attivo: periodoAttivo, onClear: () => onFilters({ ...filters, periodo: [] }) }}
         >
           <LineDaily
@@ -345,6 +354,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
             weekend={cx.giornaliero.map((d) => d.dow >= 6)}
             bench={bx ? scaled(cx.giornaliero.map((d) => d.n), bx.giornaliero.map((d) => d.n)) : undefined}
           />
+          {legendaSettimana}
           {benchNote}
         </Card>
       ),
@@ -380,6 +390,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
             colors={cx.per_dow.map((d) => (d.dow >= 6 ? COLORS.secondary : COLORS.accent))}
             bench={bx ? scaled(cx.per_dow.map((d) => d.media), bx.per_dow.map((d) => d.media)) : undefined}
           />
+          {legendaSettimana}
           {benchNote}
         </Card>
       ),
@@ -508,7 +519,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
             selected={hl('eta', (i) => ETA[i])}
             labels={ETA.filter((e) => e !== 'NA').map(etaLabel)}
             series={[
-              { name: GENERI.f, values: etaBy('f'), color: COLORS.purple },
+              { name: GENERI.f, values: etaBy('f'), color: COLORS.secondary },
               { name: GENERI.m, values: etaBy('m'), color: COLORS.accent },
             ]}
           />

@@ -1,9 +1,15 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Filters, Livello, Meta, Selection } from '../api'
 import AgentVisual from './AgentVisual'
+import { deleteChat, loadChats, newChatId, relTime, saveChat, type SavedChat } from './history'
 import { TOOL_LABEL, describeFilters, runTool, type ToolContext, type Visual } from './tools'
 
 const MAX_TURNI = 10 // chiamate al modello per una singola domanda
+// dimensioni della finestra: minime per restare leggibile; la cronologia si affianca oltre HIST_MIN
+const W_MIN = 360
+const H_MIN = 420
+const HIST_MIN = 700
+const SIZE_KEY = 'ma-size'
 
 type Part = { type: 'text'; text: string } | { type: 'visual'; v: Visual } | { type: 'step'; label: string; done: boolean }
 type Msg = { role: 'user'; text: string } | { role: 'assistant'; parts: Part[]; error?: string }
@@ -51,6 +57,22 @@ interface Props {
 export default function AgentPanel({ meta, livello, filters, selection, nameOf, apply, onClose }: Props) {
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [items, setItems] = useState<Item[]>([])
+  const [chatId, setChatId] = useState(newChatId)
+  const [chats, setChats] = useState<SavedChat[]>(loadChats)
+  const [histOpen, setHistOpen] = useState(false)
+  const [size, setSize] = useState<{ w: number; h: number }>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(SIZE_KEY) ?? 'null')
+      if (v && v.w >= W_MIN && v.h >= H_MIN) return v
+    } catch {
+      /* dimensioni predefinite */
+    }
+    return { w: 460, h: 640 }
+  })
+  const panel = useRef<HTMLElement>(null)
+  // ultima versione di messaggi e conversazione, per salvarle a fine risposta
+  const latest = useRef<{ msgs: Msg[]; items: Item[] }>({ msgs: [], items: [] })
+  latest.current = { msgs, items }
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const abort = useRef<AbortController | null>(null)
@@ -166,15 +188,106 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
     }
   }
 
+  // a fine risposta la conversazione entra in cronologia (titolo = prima domanda)
+  const wasBusy = useRef(false)
+  useEffect(() => {
+    const finished = wasBusy.current && !busy
+    wasBusy.current = busy
+    if (!finished || !latest.current.msgs.length) return
+    const first = latest.current.msgs.find((m) => m.role === 'user') as { text: string } | undefined
+    setChats(saveChat({ id: chatId, title: (first?.text ?? 'Conversazione').slice(0, 80), updated: Date.now(), msgs: latest.current.msgs, items: latest.current.items }))
+  }, [busy, chatId])
+
   const reset = () => {
     abort.current?.abort()
     setMsgs([])
     setItems([])
+    setChatId(newChatId())
+    setHistOpen(false)
     inputRef.current?.focus()
   }
 
+  const openChat = (c: SavedChat) => {
+    if (busy) return
+    setMsgs(c.msgs as Msg[])
+    setItems(c.items as Item[])
+    setChatId(c.id)
+    setHistOpen(false)
+  }
+
+  // ridimensionamento dal bordo sinistro (larghezza), superiore (altezza) o dall'angolo
+  const startResize = (dir: 'w' | 'h' | 'wh') => (e: React.PointerEvent) => {
+    e.preventDefault()
+    const parent = panel.current?.parentElement?.getBoundingClientRect()
+    const maxW = (parent?.width ?? 1200) - 32
+    const maxH = (parent?.height ?? 900) - 32
+    const x0 = e.clientX
+    const y0 = e.clientY
+    const s0 = size
+    const move = (ev: PointerEvent) =>
+      setSize({
+        w: dir === 'h' ? s0.w : Math.min(maxW, Math.max(W_MIN, s0.w + x0 - ev.clientX)),
+        h: dir === 'w' ? s0.h : Math.min(maxH, Math.max(H_MIN, s0.h + y0 - ev.clientY)),
+      })
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      document.body.classList.remove('resizing-any')
+    }
+    document.body.classList.add('resizing-any')
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIZE_KEY, JSON.stringify(size))
+    } catch {
+      /* solo per la sessione */
+    }
+  }, [size])
+
+  const wide = size.w >= HIST_MIN
+  const history = (
+    <nav className={`ag-hist ${wide ? 'side' : 'overlay'}`} aria-label="Cronologia delle conversazioni">
+      <button className="ag-hist-new" onClick={reset}>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        Nuova conversazione
+      </button>
+      <span className="ag-hist-label">Cronologia</span>
+      {chats.length === 0 && <p className="ag-hist-empty">Le conversazioni compariranno qui.</p>}
+      <ul>
+        {chats.map((c) => (
+          <li key={c.id} className={c.id === chatId ? 'on' : ''}>
+            <button className="ag-hist-item" onClick={() => openChat(c)} title={c.title}>
+              <span>{c.title}</span>
+              <small>{relTime(c.updated)}</small>
+            </button>
+            <button
+              className="ag-hist-del"
+              onClick={() => {
+                setChats(deleteChat(c.id))
+                if (c.id === chatId) reset()
+              }}
+              aria-label="Elimina conversazione"
+              title="Elimina"
+            >
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+
   return (
-    <aside className="ag" aria-label="Assistente analitico">
+    <aside className={`ag ${wide ? 'wide' : ''}`} aria-label="Mobility Agent" ref={panel} style={{ width: size.w, height: size.h }}>
+      <div className="ag-rz w" onPointerDown={startResize('w')} aria-hidden />
+      <div className="ag-rz h" onPointerDown={startResize('h')} aria-hidden />
+      <div className="ag-rz wh" onPointerDown={startResize('wh')} aria-hidden />
       <header className="ag-head">
         <div className="ag-title">
           <span className="ag-avatar" aria-hidden>
@@ -185,11 +298,18 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
             </svg>
           </span>
           <div>
-            <h2>Assistente analitico</h2>
-            <span>Domande sui dati della dashboard</span>
+            <h2>Mobility Agent</h2>
+            <span>Analisi sui dati della dashboard</span>
           </div>
         </div>
         <div className="ag-actions">
+          {!wide && (
+            <button onClick={() => setHistOpen((o) => !o)} className={histOpen ? 'on' : ''} title="Cronologia" aria-label="Cronologia delle conversazioni" aria-expanded={histOpen}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 8v4l3 2" />
+              </svg>
+            </button>
+          )}
           <button onClick={reset} disabled={!msgs.length} title="Nuova conversazione" aria-label="Nuova conversazione">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
               <path d="M12 5v14M5 12h14" />
@@ -203,6 +323,9 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
         </div>
       </header>
 
+      <div className="ag-main">
+      {(wide || histOpen) && history}
+      <div className="ag-chat">
       <div className="ag-body" ref={scroller}>
         {msgs.length === 0 ? (
           <div className="ag-empty">
@@ -293,7 +416,8 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
           </button>
         )}
       </form>
-      <p className="ag-foot">Risposte generate da un modello di IA (gpt-6.1-terra) sui dati aggregati e anonimizzati: verifica i risultati importanti.</p>
+      </div>
+      </div>
     </aside>
   )
 }
