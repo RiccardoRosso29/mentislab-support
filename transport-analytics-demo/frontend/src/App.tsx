@@ -432,7 +432,7 @@ export default function App() {
             )}
           </div>
 
-          {AGENT && !agentOpen && (
+          {AGENT && !agentOpen && !pb.open && (
             <button className="ag-fab" onClick={() => setAgentOpen(true)} title="Mobility Agent" aria-label="Apri Mobility Agent">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M12 3v3M5 10a7 7 0 0 1 14 0v5a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z" />

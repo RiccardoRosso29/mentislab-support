@@ -477,7 +477,7 @@ body.resizing { cursor: col-resize; user-select: none; }
 .bench-note.tick i::after { display: none; }
 
 /* ---- assistente analitico ---- */
-.ag-fab { position: absolute; right: 16px; bottom: 88px; z-index: 25; width: 54px; height: 54px; border-radius: 50%; border: 0; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px rgba(242, 140, 40, 0.45), 0 2px 6px rgba(0, 0, 0, 0.2); transition: background 0.2s, box-shadow 0.2s; }
+.ag-fab { position: absolute; right: 16px; bottom: 46px; z-index: 25; width: 54px; height: 54px; border-radius: 50%; border: 0; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px rgba(242, 140, 40, 0.45), 0 2px 6px rgba(0, 0, 0, 0.2); transition: background 0.2s, box-shadow 0.2s; }
 .ag-fab:hover { background: var(--accent-dark); box-shadow: 0 8px 22px rgba(242, 140, 40, 0.55), 0 2px 6px rgba(0, 0, 0, 0.2); }
 .ag-fab:focus-visible { outline: 2px solid var(--dark); outline-offset: 3px; }
 .ag { position: absolute; right: 16px; bottom: 16px; z-index: 30; max-width: calc(100% - 32px); max-height: calc(100% - 32px); display: flex; flex-direction: column; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.12); animation: ag-in 0.22s ease-out; }
