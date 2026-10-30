@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useClickOutside } from '../hooks'
 import { BASEMAPS, type Basemap } from './FlowMap'
+import { t } from '../settings'
 
 // anteprime generate dagli stessi stili della mappa (area di Torino), servite con l'app
 const THUMBS: Record<Basemap, string> = {
@@ -27,18 +28,18 @@ export default function BasemapPicker({ value, onChange, opacity, onOpacity }: P
 
   return (
     <div className={`bm ${open ? 'open' : ''}`} ref={ref}>
-      <button className="bm-tile bm-main" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`Tipo di mappa: ${current.label}`}>
+      <button className="bm-tile bm-main" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`${t('Tipo di mappa', 'Map type')}: ${current.label()}`}>
         <img src={THUMBS[value]} alt="" />
         <span>
           <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden>
             <path d="m12 3 9 5-9 5-9-5 9-5zM3 13l9 5 9-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
           </svg>
-          Mappa
+          {t('Mappa', 'Map')}
         </span>
       </button>
       {open && (
         <div className="bm-panel">
-          <div className="bm-tiles" role="radiogroup" aria-label="Tipo di mappa">
+          <div className="bm-tiles" role="radiogroup" aria-label={t('Tipo di mappa', 'Map type')}>
           {BASEMAPS.map((b) => (
             <button
               key={b.id}
@@ -48,13 +49,13 @@ export default function BasemapPicker({ value, onChange, opacity, onOpacity }: P
               onClick={() => onChange(b.id)}
             >
               <img src={THUMBS[b.id]} alt="" />
-              <span>{b.label}</span>
+              <span>{b.label()}</span>
             </button>
           ))}
           </div>
           <label className="bm-opacity" htmlFor="bm-opacity">
             <span>
-              Opacità flussi e nodi <b>{Math.round(opacity * 100)}%</b>
+              {t('Opacità flussi e nodi', 'Flow and node opacity')} <b>{Math.round(opacity * 100)}%</b>
             </span>
             <input
               id="bm-opacity"

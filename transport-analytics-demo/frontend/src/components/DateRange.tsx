@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useClickOutside } from '../hooks'
-import { fmtDate } from '../labels'
+import { fmtDate, getLocale } from '../labels'
 import { IconCalendar, IconChevron } from './icons'
+import { t } from '../settings'
 
 interface Props {
   min: string // primo giorno disponibile (ISO)
@@ -10,7 +11,6 @@ interface Props {
   onChange: (v: string[]) => void
 }
 
-const WEEKDAYS = ['L', 'M', 'M', 'G', 'V', 'S', 'D']
 const iso = (d: Date) => d.toISOString().slice(0, 10)
 const parse = (s: string) => new Date(s + 'T00:00:00Z')
 const addDays = (s: string, n: number) => iso(new Date(parse(s).getTime() + n * 86400000))
@@ -31,7 +31,7 @@ export default function DateRange({ min, max, value, onChange }: Props) {
   const [da, a] = value.length === 2 ? value : [min, max]
   const full = value.length === 0
   const label = full
-    ? 'Tutto il periodo'
+    ? t('Tutto il periodo', 'Whole period')
     : da === a
       ? fmtDate(da)
       : `${fmtDate(da)} – ${fmtDate(a)}`
@@ -65,16 +65,16 @@ export default function DateRange({ min, max, value, onChange }: Props) {
   const [rs, re] = pending ? [pending, hover ?? pending].sort() : [da, a]
 
   const presets = [
-    { label: 'Tutto il periodo', v: [] as string[] },
-    { label: 'Prima settimana', v: [min, addDays(min, 6)] },
-    { label: 'Seconda settimana', v: [addDays(min, 7), max] },
+    { label: t('Tutto il periodo', 'Whole period'), v: [] as string[] },
+    { label: t('Prima settimana', 'First week'), v: [min, addDays(min, 6)] },
+    { label: t('Seconda settimana', 'Second week'), v: [addDays(min, 7), max] },
   ]
 
   return (
     <div className={`ms dr ${open ? 'open' : ''} ${full ? '' : 'active'}`} ref={ref}>
       <button className="ms-btn" onClick={() => setOpen((o) => !o)} title={label}>
         <IconCalendar className="ms-icon" />
-        <span className="ms-label">Date</span>
+        <span className="ms-label">{t('Date', 'Dates')}</span>
         <span className="ms-value">{label}</span>
         <span className="ms-caret">▾</span>
       </button>
@@ -95,16 +95,16 @@ export default function DateRange({ min, max, value, onChange }: Props) {
             ))}
           </div>
           <div className="dr-head">
-            <button onClick={() => shiftMonth(-1)} disabled={!canPrev} aria-label="Mese precedente">
+            <button onClick={() => shiftMonth(-1)} disabled={!canPrev} aria-label={t('Mese precedente', 'Previous month')}>
               <IconChevron dir="left" />
             </button>
-            <span>{parse(month + '-01').toLocaleDateString('it-IT', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</span>
-            <button onClick={() => shiftMonth(1)} disabled={!canNext} aria-label="Mese successivo">
+            <span>{parse(month + '-01').toLocaleDateString(getLocale(), { month: 'long', year: 'numeric', timeZone: 'UTC' })}</span>
+            <button onClick={() => shiftMonth(1)} disabled={!canNext} aria-label={t('Mese successivo', 'Next month')}>
               <IconChevron dir="right" />
             </button>
           </div>
           <div className="dr-grid" onMouseLeave={() => setHover(null)}>
-            {WEEKDAYS.map((w, i) => (
+            {t('LMMGVSD', 'MTWTFSS').split('').map((w, i) => (
               <span key={i} className="dr-wd">
                 {w}
               </span>
@@ -129,7 +129,9 @@ export default function DateRange({ min, max, value, onChange }: Props) {
             })}
           </div>
           <p className="dr-hint">
-            {pending ? 'Scegli la data di fine' : `Dati disponibili dal ${fmtDate(min)} al ${fmtDate(max)}`}
+            {pending
+              ? t('Scegli la data di fine', 'Pick the end date')
+              : t(`Dati disponibili dal ${fmtDate(min)} al ${fmtDate(max)}`, `Data available from ${fmtDate(min)} to ${fmtDate(max)}`)}
           </p>
         </div>
       )}

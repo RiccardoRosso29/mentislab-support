@@ -6,6 +6,10 @@ const MAX_BYTES = 4_000_000 // ~4 minuti di audio Opus; il limite di Vercel per 
 const TIPI = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/wav', 'audio/x-m4a']
 
 // contesto per il modello: lingua, stile e vocabolario del dominio
+const PROMPT_EN =
+  'Question in English to a mobility analytics assistant for Piedmont, Italy, with correct punctuation. ' +
+  'Frequent terms: trips, origin, destination, OD matrix, flows, ACE, ISTAT, municipalities, provinces, ' +
+  'Torino, Novara, Cuneo, Alessandria, Asti, Biella, Vercelli, Verbania, time slot, commuters, home-to-work, weekend.'
 const PROMPT =
   'Domanda in italiano a un assistente di analisi della mobilità in Piemonte, con punteggiatura corretta. ' +
   'Termini frequenti: spostamenti, origine, destinazione, matrice OD, flussi, ACE, ISTAT, comuni, province, ' +
@@ -54,14 +58,15 @@ export default async function handler(req, res) {
   }
   if (audio.length < 1000) return res.status(400).json({ error: 'Registrazione vuota o troppo breve' })
 
+  const en = new URL(req.url, 'http://x').searchParams.get('lang') === 'en'
   const ext = type.split('/')[1].replace('x-', '').replace('mpeg', 'mp3')
   let last = 'Trascrizione non riuscita'
   for (const model of MODELS) {
     const form = new FormData()
     form.append('file', new Blob([audio], { type }), `dettatura.${ext}`)
     form.append('model', model)
-    form.append('language', 'it')
-    form.append('prompt', PROMPT)
+    form.append('language', en ? 'en' : 'it')
+    form.append('prompt', en ? PROMPT_EN : PROMPT)
     form.append('response_format', 'json')
     try {
       const r = await fetch('https://api.openai.com/v1/audio/transcriptions', {

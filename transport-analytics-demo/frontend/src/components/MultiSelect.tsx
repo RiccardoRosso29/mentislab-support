@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useClickOutside } from '../hooks'
+import { t } from '../settings'
 
 export interface Option {
   value: string
@@ -37,10 +38,10 @@ export default function MultiSelect({ label, options, value, onChange, searchabl
 
   const summary =
     value.length === 0
-      ? 'Tutti'
+      ? t('Tutti', 'All')
       : value.length <= 2
         ? value.map((v) => byValue.get(v)?.label ?? v).join(', ')
-        : `${value.length} selezionati`
+        : t(`${value.length} selezionati`, `${value.length} selected`)
 
   const toggle = (v: string) => onChange(selected.has(v) ? value.filter((x) => x !== v) : [...value, v])
 
@@ -58,7 +59,7 @@ export default function MultiSelect({ label, options, value, onChange, searchabl
             <input
               autoFocus
               className="ms-search"
-              placeholder="Cerca…"
+              placeholder={t('Cerca…', 'Search…')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -78,14 +79,14 @@ export default function MultiSelect({ label, options, value, onChange, searchabl
                 </div>
               )
             })}
-            {filtered.length === 0 && <div className="ms-empty">Nessun risultato</div>}
+            {filtered.length === 0 && <div className="ms-empty">{t('Nessun risultato', 'No results')}</div>}
           </div>
           <div className="ms-foot">
             <button onClick={() => onChange([])} disabled={!value.length}>
-              Deseleziona
+              {t('Deseleziona', 'Clear')}
             </button>
             <button className="primary" onClick={close}>
-              Chiudi
+              {t('Chiudi', 'Close')}
             </button>
           </div>
         </div>

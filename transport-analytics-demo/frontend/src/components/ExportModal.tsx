@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { EMPTY_FILTERS, buildQuery, getJSON, hasActiveFilters, type Filters, type Livello, type Meta } from '../api'
 import { DOW, ETA, FASCE, MOTIVI, NAZIONALITA, TIPOLOGIE, fmt, fmtPct } from '../labels'
 import { IconDownload } from './icons'
+import { t } from '../settings'
 
 const SOGLIA_K = 100
 
@@ -18,22 +19,30 @@ type Campo =
   | 'motivo_origine'
   | 'motivo_destinazione'
 
-const CAMPI: { id: Campo; label: string; gruppo: string; tipo: 'testo' | 'data' }[] = [
-  { id: 'origine', label: 'Zona di origine', gruppo: 'Territorio', tipo: 'testo' },
-  { id: 'destinazione', label: 'Zona di destinazione', gruppo: 'Territorio', tipo: 'testo' },
-  { id: 'giorno', label: 'Data', gruppo: 'Tempo', tipo: 'data' },
-  { id: 'giorno_settimana', label: 'Giorno della settimana', gruppo: 'Tempo', tipo: 'testo' },
-  { id: 'fascia_oraria', label: 'Fascia oraria', gruppo: 'Tempo', tipo: 'testo' },
-  { id: 'genere', label: 'Genere', gruppo: 'Profilo', tipo: 'testo' },
-  { id: 'eta', label: 'Fascia d’età', gruppo: 'Profilo', tipo: 'testo' },
-  { id: 'nazionalita', label: 'Nazionalità', gruppo: 'Profilo', tipo: 'testo' },
-  { id: 'tipologia', label: 'Tipologia', gruppo: 'Spostamento', tipo: 'testo' },
-  { id: 'motivo_origine', label: 'Motivo in origine', gruppo: 'Spostamento', tipo: 'testo' },
-  { id: 'motivo_destinazione', label: 'Motivo in destinazione', gruppo: 'Spostamento', tipo: 'testo' },
+// testi in coppia [italiano, inglese], risolti con t() al momento del render
+type Testo = readonly [string, string]
+const GRUPPI = {
+  territorio: ['Territorio', 'Geography'],
+  tempo: ['Tempo', 'Time'],
+  profilo: ['Profilo', 'Profile'],
+  spostamento: ['Spostamento', 'Trip'],
+} as const satisfies Record<string, Testo>
+type Gruppo = keyof typeof GRUPPI
+const CAMPI: { id: Campo; label: Testo; gruppo: Gruppo; tipo: 'testo' | 'data' }[] = [
+  { id: 'origine', label: ['Zona di origine', 'Origin zone'], gruppo: 'territorio', tipo: 'testo' },
+  { id: 'destinazione', label: ['Zona di destinazione', 'Destination zone'], gruppo: 'territorio', tipo: 'testo' },
+  { id: 'giorno', label: ['Data', 'Date'], gruppo: 'tempo', tipo: 'data' },
+  { id: 'giorno_settimana', label: ['Giorno della settimana', 'Day of the week'], gruppo: 'tempo', tipo: 'testo' },
+  { id: 'fascia_oraria', label: ['Fascia oraria', 'Time slot'], gruppo: 'tempo', tipo: 'testo' },
+  { id: 'genere', label: ['Genere', 'Gender'], gruppo: 'profilo', tipo: 'testo' },
+  { id: 'eta', label: ['Fascia d’età', 'Age group'], gruppo: 'profilo', tipo: 'testo' },
+  { id: 'nazionalita', label: ['Nazionalità', 'Nationality'], gruppo: 'profilo', tipo: 'testo' },
+  { id: 'tipologia', label: ['Tipologia', 'Trip type'], gruppo: 'spostamento', tipo: 'testo' },
+  { id: 'motivo_origine', label: ['Motivo in origine', 'Purpose at origin'], gruppo: 'spostamento', tipo: 'testo' },
+  { id: 'motivo_destinazione', label: ['Motivo in destinazione', 'Purpose at destination'], gruppo: 'spostamento', tipo: 'testo' },
 ]
 const ORDER = CAMPI.map((c) => c.id)
-const GRUPPI = ['Territorio', 'Tempo', 'Profilo', 'Spostamento']
-const label = (c: Campo) => CAMPI.find((x) => x.id === c)!.label
+const label = (c: Campo) => t(...CAMPI.find((x) => x.id === c)!.label)
 
 // icone a tratto 24×24 per i dataset tematici
 const ICONS: Record<string, ReactNode> = {
@@ -60,19 +69,44 @@ const ICONS: Record<string, ReactNode> = {
   ),
 }
 
-const PRESETS: { id: string; titolo: string; descr: string; campi: Campo[] }[] = [
-  { id: 'od', titolo: 'Matrice origine–destinazione', descr: 'Spostamenti tra ogni coppia di zone', campi: ['origine', 'destinazione'] },
-  { id: 'fascia', titolo: 'Flussi per fascia oraria', descr: 'La matrice OD nelle cinque fasce della giornata', campi: ['origine', 'destinazione', 'fascia_oraria'] },
-  { id: 'generati', titolo: 'Spostamenti generati per zona', descr: 'Partenze da ogni zona, interne o verso fuori regione', campi: ['origine', 'tipologia'] },
-  { id: 'profilo', titolo: 'Profilo di chi arriva', descr: 'Arrivi in ogni zona per genere e fascia d’età', campi: ['destinazione', 'genere', 'eta'] },
-  { id: 'motivi', titolo: 'Motivi di spostamento', descr: 'Casa, lavoro e altro, all’origine e all’arrivo', campi: ['destinazione', 'motivo_origine', 'motivo_destinazione'] },
-  { id: 'nazionalita', titolo: 'Presenze per nazionalità', descr: 'Arrivi di italiani e stranieri in ogni zona', campi: ['destinazione', 'nazionalita'] },
+const PRESETS: { id: string; titolo: Testo; descr: Testo; campi: Campo[] }[] = [
+  { id: 'od', titolo: ['Matrice origine–destinazione', 'Origin–destination matrix'], descr: ['Spostamenti tra ogni coppia di zone', 'Trips between every pair of zones'], campi: ['origine', 'destinazione'] },
+  {
+    id: 'fascia',
+    titolo: ['Flussi per fascia oraria', 'Flows by time slot'],
+    descr: ['La matrice OD nelle cinque fasce della giornata', 'The OD matrix across the five time slots of the day'],
+    campi: ['origine', 'destinazione', 'fascia_oraria'],
+  },
+  {
+    id: 'generati',
+    titolo: ['Spostamenti generati per zona', 'Trips generated by zone'],
+    descr: ['Partenze da ogni zona, interne o verso fuori regione', 'Departures from each zone, internal or to outside the region'],
+    campi: ['origine', 'tipologia'],
+  },
+  {
+    id: 'profilo',
+    titolo: ['Profilo di chi arriva', 'Profile of arrivals'],
+    descr: ['Arrivi in ogni zona per genere e fascia d’età', 'Arrivals in each zone by gender and age group'],
+    campi: ['destinazione', 'genere', 'eta'],
+  },
+  {
+    id: 'motivi',
+    titolo: ['Motivi di spostamento', 'Trip purposes'],
+    descr: ['Casa, lavoro e altro, all’origine e all’arrivo', 'Home, work and other, at origin and at arrival'],
+    campi: ['destinazione', 'motivo_origine', 'motivo_destinazione'],
+  },
+  {
+    id: 'nazionalita',
+    titolo: ['Presenze per nazionalità', 'Presence by nationality'],
+    descr: ['Arrivi di italiani e stranieri in ogni zona', 'Arrivals of Italians and foreigners in each zone'],
+    campi: ['destinazione', 'nazionalita'],
+  },
 ]
 
-const LIVELLI: { id: Livello; label: string }[] = [
+const livelli = (): { id: Livello; label: string }[] => [
   { id: 'ace', label: 'ACE ISTAT' },
-  { id: 'comune', label: 'Comuni' },
-  { id: 'provincia', label: 'Province' },
+  { id: 'comune', label: t('Comuni', 'Municipalities') },
+  { id: 'provincia', label: t('Province', 'Provinces') },
 ]
 
 type Granularita = 'media' | 'giornaliera'
@@ -91,9 +125,9 @@ interface Rows extends Summary {
 
 /** Livello di perdita informativa: quota di spostamenti che cade in gruppi rimossi dalla soglia. */
 function severity(p: number) {
-  if (p <= 0.05) return { cls: 'low', label: 'Bassa' }
-  if (p <= 0.2) return { cls: 'mid', label: 'Moderata' }
-  return { cls: 'high', label: 'Elevata' }
+  if (p <= 0.05) return { cls: 'low', label: t('Bassa', 'Low') }
+  if (p <= 0.2) return { cls: 'mid', label: t('Moderata', 'Moderate') }
+  return { cls: 'high', label: t('Elevata', 'High') }
 }
 
 /** Indicatore compatto a quattro tacche per la lista dei dataset tematici. */
@@ -101,19 +135,22 @@ function LossTicks({ s }: { s: Summary | string | null | undefined }) {
   if (typeof s === 'string')
     return (
       <span className="xp-ticks na" title={s}>
-        troppo dettagliato
+        {t('troppo dettagliato', 'too detailed')}
       </span>
     )
   if (s === undefined || s === null)
     return (
-      <span className="xp-ticks pending" aria-label="calcolo in corso">
+      <span className="xp-ticks pending" aria-label={t('calcolo in corso', 'calculating')}>
         <span className="xp-spin" />
       </span>
     )
   const sv = severity(s.perdita)
   const lit = s.perdita <= 0.01 ? 1 : s.perdita <= 0.05 ? 2 : s.perdita <= 0.2 ? 3 : 4
   return (
-    <span className={`xp-ticks ${sv.cls}`} title={`Perdita informativa ${sv.label.toLowerCase()}: ${fmtPct(s.perdita)} degli spostamenti`}>
+    <span className={`xp-ticks ${sv.cls}`} title={t(
+        `Perdita informativa ${sv.label.toLowerCase()}: ${fmtPct(s.perdita)} degli spostamenti`,
+        `${sv.label} information loss: ${fmtPct(s.perdita)} of trips`,
+      )}>
       <span className="xp-ticks-bars" aria-hidden>
         {[1, 2, 3, 4].map((i) => (
           <i key={i} className={i <= lit ? 'on' : ''} />
@@ -257,7 +294,7 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
   const header = [...campi, 'spostamenti_periodo', ...(media ? ['spostamenti_medi_giorno'] : [])]
   const examples = exampleRows(campi, meta, livello)
   const territoriale = campi.includes('origine') || campi.includes('destinazione')
-  const titolo = tab === 'temi' ? presetSel.titolo : 'Dataset personalizzato'
+  const titolo = tab === 'temi' ? t(...presetSel.titolo) : t('Dataset personalizzato', 'Custom dataset')
   // posizione del marcatore sulla scala 0–40% (oltre è comunque "elevata")
   const marker = current ? Math.min(1, current.perdita / 0.4) * 100 : 0
 
@@ -266,18 +303,18 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
       <div className="xp" role="dialog" aria-modal="true" aria-labelledby="xp-title">
         <header className="xp-head">
           <div>
-            <span className="xp-eyebrow">Esportazione dati</span>
-            <h2 id="xp-title">Crea un dataset</h2>
+            <span className="xp-eyebrow">{t('Esportazione dati', 'Data export')}</span>
+            <h2 id="xp-title">{t('Crea un dataset', 'Create a dataset')}</h2>
           </div>
           <div className="xp-head-right">
-            <span className="xp-shield" title={`Ogni riga del file rappresenta almeno ${SOGLIA_K} spostamenti nel periodo`}>
+            <span className="xp-shield" title={t(`Ogni riga del file rappresenta almeno ${SOGLIA_K} spostamenti nel periodo`, `Each row of the file represents at least ${SOGLIA_K} trips in the period`)}>
               <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden>
                 <path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
                 <path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Anonimizzazione k ≥ {SOGLIA_K}
+              {t('Anonimizzazione', 'Anonymisation')} k ≥ {SOGLIA_K}
             </span>
-            <button className="xp-x" onClick={onClose} aria-label="Chiudi">
+            <button className="xp-x" onClick={onClose} aria-label={t('Chiudi', 'Close')}>
               <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
                 <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
@@ -290,19 +327,19 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
             <div className="xp-step">
               <div className="xp-step-head">
                 <span className="xp-num">1</span>
-                <h3>Contenuto</h3>
+                <h3>{t('Contenuto', 'Content')}</h3>
                 <div className="xp-tabs" role="tablist">
                   <button role="tab" aria-selected={tab === 'temi'} className={tab === 'temi' ? 'on' : ''} onClick={() => setTab('temi')}>
-                    Dataset tematici
+                    {t('Dataset tematici', 'Thematic datasets')}
                   </button>
                   <button role="tab" aria-selected={tab === 'custom'} className={tab === 'custom' ? 'on' : ''} onClick={() => setTab('custom')}>
-                    Personalizzato
+                    {t('Personalizzato', 'Custom')}
                   </button>
                 </div>
               </div>
 
               {tab === 'temi' ? (
-                <ul className="xp-presets" role="radiogroup" aria-label="Dataset tematici">
+                <ul className="xp-presets" role="radiogroup" aria-label={t('Dataset tematici', 'Thematic datasets')}>
                   {PRESETS.map((p) => {
                     const on = preset === p.id
                     return (
@@ -314,8 +351,8 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
                             </svg>
                           </span>
                           <span className="xp-p-text">
-                            <span className="xp-p-title">{p.titolo}</span>
-                            <span className="xp-p-descr">{p.descr}</span>
+                            <span className="xp-p-title">{t(...p.titolo)}</span>
+                            <span className="xp-p-descr">{t(...p.descr)}</span>
                             <span className="xp-p-cols">{presetCampi(p.campi).join(' · ')}</span>
                           </span>
                           <LossTicks s={summaryOf(presetCampi(p.campi))} />
@@ -326,9 +363,9 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
                 </ul>
               ) : (
                 <div className="xp-fields">
-                  {GRUPPI.map((g) => (
+                  {(Object.keys(GRUPPI) as Gruppo[]).map((g) => (
                     <div key={g} className="xp-group">
-                      <span className="xp-group-label">{g}</span>
+                      <span className="xp-group-label">{t(...GRUPPI[g])}</span>
                       <div className="xp-toggles">
                         {CAMPI.filter((c) => c.gruppo === g).map((c) => {
                           const on = custom.includes(c.id)
@@ -341,7 +378,7 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
                                   </svg>
                                 )}
                               </span>
-                              {c.label}
+                              {t(...c.label)}
                             </button>
                           )
                         })}
@@ -349,7 +386,12 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
                     </div>
                   ))}
                   {custom.includes('giorno') && custom.includes('giorno_settimana') && (
-                    <p className="xp-note">La data contiene già il giorno della settimana: uno dei due campi è ridondante.</p>
+                    <p className="xp-note">
+                      {t(
+                        'La data contiene già il giorno della settimana: uno dei due campi è ridondante.',
+                        'The date already contains the day of the week: one of the two fields is redundant.',
+                      )}
+                    </p>
                   )}
                 </div>
               )}
@@ -358,34 +400,40 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
             <div className="xp-step">
               <div className="xp-step-head">
                 <span className="xp-num">2</span>
-                <h3>Opzioni</h3>
+                <h3>{t('Opzioni', 'Options')}</h3>
               </div>
               <div className="xp-options">
                 {tab === 'temi' && (
                   <div className="xp-opt">
-                    <span className="xp-opt-label">Granularità temporale</span>
+                    <span className="xp-opt-label">{t('Granularità temporale', 'Time granularity')}</span>
                     <Seg<Granularita>
                       value={granularita}
                       onChange={setGranularita}
                       options={[
-                        { id: 'media', label: 'Media giornaliera' },
-                        { id: 'giornaliera', label: 'Per data' },
+                        { id: 'media', label: t('Media giornaliera', 'Daily average') },
+                        { id: 'giornaliera', label: t('Per data', 'By date') },
                       ]}
                     />
                     <span className="xp-opt-hint">
-                      {granularita === 'media' ? 'Una riga per combinazione, con totale del periodo e media al giorno' : 'Una riga per ogni data del periodo: più dettaglio, gruppi più piccoli'}
+                      {granularita === 'media'
+                        ? t('Una riga per combinazione, con totale del periodo e media al giorno', 'One row per combination, with the period total and the daily average')
+                        : t('Una riga per ogni data del periodo: più dettaglio, gruppi più piccoli', 'One row for each date of the period: more detail, smaller groups')}
                     </span>
                   </div>
                 )}
                 <div className="xp-opt">
-                  <span className="xp-opt-label">Livello territoriale</span>
-                  <Seg<Livello> value={livello} onChange={setLivello} options={LIVELLI} disabled={!territoriale} />
-                  {!territoriale && <span className="xp-opt-hint">Il dataset non contiene zone</span>}
+                  <span className="xp-opt-label">{t('Livello territoriale', 'Spatial level')}</span>
+                  <Seg<Livello> value={livello} onChange={setLivello} options={livelli()} disabled={!territoriale} />
+                  {!territoriale && <span className="xp-opt-hint">{t('Il dataset non contiene zone', 'The dataset contains no zones')}</span>}
                 </div>
                 <label className={`xp-switch ${filtriAttivi ? '' : 'disabled'}`}>
                   <input id="xp-filtri" type="checkbox" checked={useFilters} disabled={!filtriAttivi} onChange={(e) => setUseFilters(e.target.checked)} />
                   <span className="xp-switch-track" aria-hidden />
-                  <span>{filtriAttivi ? 'Applica i filtri attivi della dashboard' : 'Nessun filtro attivo: si esporta tutto il periodo'}</span>
+                  <span>
+                    {filtriAttivi
+                      ? t('Applica i filtri attivi della dashboard', 'Apply the active dashboard filters')
+                      : t('Nessun filtro attivo: si esporta tutto il periodo', 'No active filters: the whole period is exported')}
+                  </span>
                 </label>
               </div>
             </div>
@@ -394,15 +442,15 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
           <aside className="xp-side">
             <div className="xp-step-head">
               <span className="xp-num">3</span>
-              <h3>Verifica</h3>
+              <h3>{t('Verifica', 'Review')}</h3>
             </div>
             <p className="xp-side-title">{titolo}</p>
 
             <div className={`xp-gauge ${sv?.cls ?? ''}`}>
               <div className="xp-gauge-top">
                 <div>
-                  <span className="xp-gauge-label">Perdita informativa</span>
-                  <span className="xp-gauge-sev">{sv ? sv.label : entryError ? 'Non calcolabile' : campi.length ? 'Calcolo…' : 'Nessun campo'}</span>
+                  <span className="xp-gauge-label">{t('Perdita informativa', 'Information loss')}</span>
+                  <span className="xp-gauge-sev">{sv ? sv.label : entryError ? t('Non calcolabile', 'Not computable') : campi.length ? t('Calcolo…', 'Calculating…') : t('Nessun campo', 'No fields')}</span>
                 </div>
                 {current ? <span className="xp-gauge-value">{fmtPct(current.perdita)}</span> : loading ? <span className="xp-skel" /> : <span className="xp-gauge-value">–</span>}
               </div>
@@ -420,32 +468,37 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
                 <span>40%+</span>
               </div>
               {entryError && <p className="xp-warn">{entryError}</p>}
-              {sv?.cls === 'high' && <p className="xp-warn">Molti gruppi sono sotto la soglia: togli qualche campo o scegli un livello territoriale meno dettagliato.</p>}
+              {sv?.cls === 'high' && <p className="xp-warn">
+                  {t(
+                    'Molti gruppi sono sotto la soglia: togli qualche campo o scegli un livello territoriale meno dettagliato.',
+                    'Many groups are below the threshold: remove some fields or choose a less detailed spatial level.',
+                  )}
+                </p>}
             </div>
 
             <dl className="xp-stats">
               <div>
-                <dt>Righe nel file</dt>
+                <dt>{t('Righe nel file', 'Rows in the file')}</dt>
                 <dd>{current ? fmt(current.gruppi_esportati) : '–'}</dd>
               </div>
               <div>
-                <dt>Colonne</dt>
+                <dt>{t('Colonne', 'Columns')}</dt>
                 <dd>{campi.length ? header.length : '–'}</dd>
               </div>
               <div>
-                <dt>Gruppi rimossi</dt>
+                <dt>{t('Gruppi rimossi', 'Groups removed')}</dt>
                 <dd>{current ? fmt(current.gruppi_totali - current.gruppi_esportati) : '–'}</dd>
               </div>
               <div>
-                <dt>Spostamenti conservati</dt>
+                <dt>{t('Spostamenti conservati', 'Trips retained')}</dt>
                 <dd>{current ? fmtPct(1 - current.perdita) : '–'}</dd>
               </div>
             </dl>
 
             <div className="xp-preview">
               <div className="xp-preview-head">
-                <span>Struttura del file</span>
-                <small>valori di esempio</small>
+                <span>{t('Struttura del file', 'File structure')}</span>
+                <small>{t('valori di esempio', 'sample values')}</small>
               </div>
               <div className="xp-sheet">
                 <table>
@@ -453,7 +506,7 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
                     <tr>
                       <th className="rn" />
                       {header.map((h) => {
-                        const tipo = h.startsWith('spostamenti') ? '123' : h === 'giorno' ? 'data' : 'Aa'
+                        const tipo = h.startsWith('spostamenti') ? '123' : h === 'giorno' ? t('data', 'date') : 'Aa'
                         return (
                           <th key={h}>
                             <span className="xp-type">{tipo}</span>
@@ -478,7 +531,7 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
                     ) : (
                       <tr>
                         <td colSpan={header.length + 1} className="xp-empty">
-                          Seleziona almeno un campo
+                          {t('Seleziona almeno un campo', 'Select at least one field')}
                         </td>
                       </tr>
                     )}
@@ -489,7 +542,7 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
 
             <footer className="xp-foot">
               <span className="xp-file">
-                CSV · UTF-8 · separatore «;»
+                CSV · UTF-8 · {t('separatore «;»', 'separator “;”')}
                 {campi.length > 0 && (
                   <>
                     <br />
@@ -497,10 +550,14 @@ export default function ExportModal({ meta, filters, livello: livelloIniziale, o
                   </>
                 )}
               </span>
-              {error && <span className="xp-warn">Esportazione non riuscita: {error}</span>}
+              {error && (
+                <span className="xp-warn">
+                  {t('Esportazione non riuscita', 'Export failed')}: {error}
+                </span>
+              )}
               <button className="xp-go" onClick={download} disabled={!campi.length || downloading || !current}>
                 <IconDownload />
-                {downloading ? 'Preparazione…' : 'Scarica CSV'}
+                {downloading ? t('Preparazione…', 'Preparing…') : t('Scarica CSV', 'Download CSV')}
               </button>
             </footer>
           </aside>

@@ -285,13 +285,13 @@ export async function runTool(name: string, args: Args, ctx: ToolContext): Promi
 }
 
 /** Etichetta mostrata nella chat mentre uno strumento è in esecuzione. */
-export const TOOL_LABEL: Record<string, string> = {
-  find_zones: 'Cerco le zone',
-  get_statistics: 'Calcolo statistiche e profili',
-  get_relations: 'Analizzo le relazioni',
-  get_zone_ranking: 'Confronto le zone',
-  aggregate: 'Aggrego i dati',
-  render_chart: 'Preparo il grafico',
-  render_table: 'Preparo la tabella',
-  apply_dashboard: 'Aggiorno la dashboard',
+export const TOOL_LABEL: Record<string, [string, string]> = {
+  find_zones: ['Cerco le zone', 'Looking up zones'],
+  get_statistics: ['Calcolo statistiche e profili', 'Computing statistics and profiles'],
+  get_relations: ['Analizzo le relazioni', 'Analysing relations'],
+  get_zone_ranking: ['Confronto le zone', 'Comparing zones'],
+  aggregate: ['Aggrego i dati', 'Aggregating data'],
+  render_chart: ['Preparo il grafico', 'Preparing the chart'],
+  render_table: ['Preparo la tabella', 'Preparing the table'],
+  apply_dashboard: ['Aggiorno la dashboard', 'Updating the dashboard'],
 }

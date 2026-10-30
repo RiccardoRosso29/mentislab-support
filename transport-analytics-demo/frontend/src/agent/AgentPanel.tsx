@@ -4,6 +4,7 @@ import AgentVisual from './AgentVisual'
 import { useDictation } from './dictation'
 import { deleteChat, loadChats, newChatId, relTime, saveChat, type SavedChat } from './history'
 import { TOOL_LABEL, describeFilters, runTool, type ToolContext, type Visual } from './tools'
+import { getLang, t as tr } from '../settings'
 
 const MAX_TURNI = 10 // chiamate al modello per una singola domanda
 // dimensioni della finestra: minime per restare leggibile; la cronologia si affianca oltre HIST_MIN
@@ -17,11 +18,11 @@ type Msg = { role: 'user'; text: string } | { role: 'assistant'; parts: Part[]; 
 // elementi della conversazione nel formato della Responses API (inclusi i ragionamenti cifrati)
 type Item = Record<string, unknown>
 
-const SUGGERIMENTI = [
-  'Quali sono le relazioni principali e come cambiano nel fine settimana?',
-  'Confronta il profilo orario di Torino con la media dell’area',
-  'Quali comuni attraggono più spostamenti casa → lavoro?',
-  'Mostrami sulla mappa i flussi serali in partenza da Novara',
+const suggerimenti = () => [
+  tr('Quali sono le relazioni principali e come cambiano nel fine settimana?', 'What are the main relations and how do they change at the weekend?'),
+  tr('Confronta il profilo orario di Torino con la media dell’area', 'Compare the time-of-day profile of Torino with the area average'),
+  tr('Quali comuni attraggono più spostamenti casa → lavoro?', 'Which municipalities attract the most home → work trips?'),
+  tr('Mostrami sulla mappa i flussi serali in partenza da Novara', 'Show me on the map the evening flows departing from Novara'),
 ]
 
 /** Formattazione minima del testo del modello: paragrafi, elenchi puntati e grassetto. */
@@ -179,11 +180,11 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
         const res = await fetch('api/agent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ input: conv }),
+          body: JSON.stringify({ input: conv, lang: getLang() }),
           signal: ctrl.signal,
         })
-        const data = await res.json().catch(() => ({ error: `Risposta non valida dal server (${res.status})` }))
-        if (!res.ok || data.error) throw new Error(data.error || `Errore ${res.status}`)
+        const data = await res.json().catch(() => ({ error: `${tr('Risposta non valida dal server', 'Invalid response from the server')} (${res.status})` }))
+        if (!res.ok || data.error) throw new Error(data.error || `${tr('Errore', 'Error')} ${res.status}`)
         const output = (data.output ?? []) as Item[]
         conv = [...conv, ...output]
 
@@ -197,7 +198,7 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
         if (!calls.length) break
         for (const c of calls) {
           const name = String(c.name)
-          const label = TOOL_LABEL[name] ?? name
+          const label = TOOL_LABEL[name] ? tr(...TOOL_LABEL[name]) : name
           updateLast((m) => m.parts.push({ type: 'step', label, done: false }))
           let result: unknown
           try {
@@ -214,7 +215,7 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
       }
       setItems(conv)
     } catch (e) {
-      const err = (e as Error).name === 'AbortError' ? 'Risposta interrotta.' : (e as Error).message
+      const err = (e as Error).name === 'AbortError' ? tr('Risposta interrotta.', 'Response interrupted.') : (e as Error).message
       updateLast((m) => {
         m.error = err
       })
@@ -232,7 +233,7 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
     wasBusy.current = busy
     if (!finished || !latest.current.msgs.length) return
     const first = latest.current.msgs.find((m) => m.role === 'user') as { text: string } | undefined
-    setChats(saveChat({ id: chatId, title: (first?.text ?? 'Conversazione').slice(0, 80), updated: Date.now(), msgs: latest.current.msgs, items: latest.current.items }))
+    setChats(saveChat({ id: chatId, title: (first?.text ?? tr('Conversazione', 'Conversation')).slice(0, 80), updated: Date.now(), msgs: latest.current.msgs, items: latest.current.items }))
   }, [busy, chatId])
 
   const reset = () => {
@@ -285,15 +286,15 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
 
   const wide = size.w >= HIST_MIN
   const history = (
-    <nav className={`ag-hist ${wide ? 'side' : 'overlay'}`} aria-label="Cronologia delle conversazioni">
+    <nav className={`ag-hist ${wide ? 'side' : 'overlay'}`} aria-label={tr('Cronologia delle conversazioni', 'Conversation history')}>
       <button className="ag-hist-new" onClick={reset}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
           <path d="M12 5v14M5 12h14" />
         </svg>
-        Nuova conversazione
+        {tr('Nuova conversazione', 'New conversation')}
       </button>
-      <span className="ag-hist-label">Cronologia</span>
-      {chats.length === 0 && <p className="ag-hist-empty">Le conversazioni compariranno qui.</p>}
+      <span className="ag-hist-label">{tr('Cronologia', 'History')}</span>
+      {chats.length === 0 && <p className="ag-hist-empty">{tr('Le conversazioni compariranno qui.', 'Conversations will appear here.')}</p>}
       <ul>
         {chats.map((c) => (
           <li key={c.id} className={c.id === chatId ? 'on' : ''}>
@@ -307,8 +308,8 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
                 setChats(deleteChat(c.id))
                 if (c.id === chatId) reset()
               }}
-              aria-label="Elimina conversazione"
-              title="Elimina"
+              aria-label={tr('Elimina conversazione', 'Delete conversation')}
+              title={tr('Elimina', 'Delete')}
             >
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
                 <path d="M6 6l12 12M18 6 6 18" />
@@ -336,23 +337,23 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
           </span>
           <div>
             <h2>Mobility Agent</h2>
-            <span>Analisi sui dati della dashboard</span>
+            <span>{tr('Analisi sui dati della dashboard', 'Analysis of the dashboard data')}</span>
           </div>
         </div>
         <div className="ag-actions">
           {!wide && (
-            <button onClick={() => setHistOpen((o) => !o)} className={histOpen ? 'on' : ''} title="Cronologia" aria-label="Cronologia delle conversazioni" aria-expanded={histOpen}>
+            <button onClick={() => setHistOpen((o) => !o)} className={histOpen ? 'on' : ''} title={tr('Cronologia', 'History')} aria-label={tr('Cronologia delle conversazioni', 'Conversation history')} aria-expanded={histOpen}>
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 8v4l3 2" />
               </svg>
             </button>
           )}
-          <button onClick={reset} disabled={!msgs.length} title="Nuova conversazione" aria-label="Nuova conversazione">
+          <button onClick={reset} disabled={!msgs.length} title={tr('Nuova conversazione', 'New conversation')} aria-label={tr('Nuova conversazione', 'New conversation')}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
               <path d="M12 5v14M5 12h14" />
             </svg>
           </button>
-          <button onClick={onClose} title="Chiudi" aria-label="Chiudi assistente">
+          <button onClick={onClose} title={tr('Chiudi', 'Close')} aria-label={tr('Chiudi assistente', 'Close assistant')}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M6 6l12 12M18 6 6 18" />
             </svg>
@@ -367,11 +368,13 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
         {msgs.length === 0 ? (
           <div className="ag-empty">
             <p>
-              Chiedimi analisi sui flussi, confronti tra zone, profili dei viaggiatori o andamenti nel tempo. Posso creare grafici e tabelle e
-              aggiornare la mappa. Uso i filtri attivi, se non mi chiedi diversamente.
+              {tr(
+                'Chiedimi analisi sui flussi, confronti tra zone, profili dei viaggiatori o andamenti nel tempo. Posso creare grafici e tabelle e aggiornare la mappa. Uso i filtri attivi, se non mi chiedi diversamente.',
+                'Ask me for flow analyses, comparisons between zones, traveller profiles or trends over time. I can create charts and tables and update the map. I use the active filters unless you ask otherwise.',
+              )}
             </p>
             <div className="ag-sugg">
-              {SUGGERIMENTI.map((s) => (
+              {suggerimenti().map((s) => (
                 <button key={s} onClick={() => ask(s)}>
                   {s}
                 </button>
@@ -405,7 +408,7 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
                   ),
                 )}
                 {busy && i === msgs.length - 1 && !m.parts.some((p) => p.type === 'step' && !p.done) && (
-                  <div className="ag-thinking" aria-label="L’assistente sta elaborando">
+                  <div className="ag-thinking" aria-label={tr('L’assistente sta elaborando', 'The assistant is working')}>
                     <i />
                     <i />
                     <i />
@@ -428,19 +431,19 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
         {dict.state === 'recording' ? (
           <div className="ag-rec" role="status" aria-live="polite">
             <span className="ag-rec-dot" aria-hidden />
-            <span className="ag-rec-label">In ascolto</span>
+            <span className="ag-rec-label">{tr('In ascolto', 'Listening')}</span>
             <span className="ag-rec-wave" aria-hidden>
               {[0.55, 0.8, 1, 0.7, 0.9, 0.6, 0.85].map((k, i) => (
                 <i key={i} style={{ transform: `scaleY(${0.15 + Math.min(1, dict.level * k * 1.6)})` }} />
               ))}
             </span>
             <span className="ag-rec-time">{mmss(dict.seconds)}</span>
-            <button type="button" className="ag-rec-btn" onClick={dict.cancel} title="Annulla (Esc)" aria-label="Annulla la dettatura">
+            <button type="button" className="ag-rec-btn" onClick={dict.cancel} title={tr('Annulla (Esc)', 'Cancel (Esc)')} aria-label={tr('Annulla la dettatura', 'Cancel dictation')}>
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
                 <path d="M6 6l12 12M18 6 6 18" />
               </svg>
             </button>
-            <button type="button" className="ag-rec-btn ok" onClick={dict.stop} title="Termina e trascrivi (Invio)" aria-label="Termina e trascrivi">
+            <button type="button" className="ag-rec-btn ok" onClick={dict.stop} title={tr('Termina e trascrivi (Invio)', 'Stop and transcribe (Enter)')} aria-label={tr('Termina e trascrivi', 'Stop and transcribe')}>
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="m5 12.5 4.5 4.5L19 7.5" />
               </svg>
@@ -452,7 +455,7 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
               id="ag-question"
               ref={inputRef}
               rows={1}
-              placeholder={dict.state === 'transcribing' ? 'Trascrizione in corso…' : 'Fai una domanda sui dati…'}
+              placeholder={dict.state === 'transcribing' ? tr('Trascrizione in corso…', 'Transcribing…') : tr('Fai una domanda sui dati…', 'Ask a question about the data…')}
               value={text}
               disabled={dict.state === 'transcribing'}
               onChange={(e) => setText(e.target.value)}
@@ -469,8 +472,8 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
                 className={`ag-mic ${dict.state === 'transcribing' ? 'busy' : ''}`}
                 onClick={dict.start}
                 disabled={busy || dict.state !== 'idle'}
-                title="Detta la domanda"
-                aria-label="Detta la domanda"
+                title={tr('Detta la domanda', 'Dictate your question')}
+                aria-label={tr('Detta la domanda', 'Dictate your question')}
               >
                 {dict.state === 'transcribing' ? (
                   <span className="xp-spin" />
@@ -485,13 +488,13 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
           </div>
         )}
         {busy ? (
-          <button type="button" className="ag-send stop" onClick={() => abort.current?.abort()} aria-label="Interrompi">
+          <button type="button" className="ag-send stop" onClick={() => abort.current?.abort()} aria-label={tr('Interrompi', 'Stop')}>
             <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
               <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
             </svg>
           </button>
         ) : (
-          <button type="submit" className="ag-send" disabled={!text.trim()} aria-label="Invia">
+          <button type="submit" className="ag-send" disabled={!text.trim()} aria-label={tr('Invia', 'Send')}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
@@ -501,7 +504,7 @@ export default function AgentPanel({ meta, livello, filters, selection, nameOf, 
       {dict.error && (
         <p className="ag-dict-error" role="alert">
           {dict.error}
-          <button type="button" onClick={dict.clearError} aria-label="Chiudi">
+          <button type="button" onClick={dict.clearError} aria-label={tr('Chiudi', 'Close')}>
             ✕
           </button>
         </p>

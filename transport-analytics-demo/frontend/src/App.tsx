@@ -10,6 +10,8 @@ import Playback, { buildFrames, type PlaybackState } from './components/Playback
 import ExportModal from './components/ExportModal'
 import RelazioniModal from './components/RelazioniModal'
 import AgentPanel from './agent/AgentPanel'
+import AccountMenu from './components/AccountMenu'
+import { BRAND, SettingsContext, applySettings, getLang, getTheme, t, type Settings } from './settings'
 
 // Mobility Agent richiede la funzione server (/api/agent): attivo solo nella versione web
 const AGENT = import.meta.env.VITE_AGENT === '1'
@@ -27,10 +29,10 @@ const fromSlider = (v: number) => {
   return n < 100 ? Math.round(n / 5) * 5 : n < 1000 ? Math.round(n / 10) * 10 : Math.round(n / 50) * 50
 }
 
-const LIVELLI: { id: Livello; label: string; hint: string }[] = [
-  { id: 'ace', label: 'ACE ISTAT', hint: 'Aree di censimento, subcomunali nei comuni maggiori' },
-  { id: 'comune', label: 'Comuni', hint: 'Confini comunali' },
-  { id: 'provincia', label: 'Province', hint: 'Confini provinciali' },
+const livelli = (): { id: Livello; label: string; hint: string }[] => [
+  { id: 'ace', label: 'ACE ISTAT', hint: t('Aree di censimento, subcomunali nei comuni maggiori', 'Census areas, sub-municipal in the larger municipalities') },
+  { id: 'comune', label: t('Comuni', 'Municipalities'), hint: t('Confini comunali', 'Municipal boundaries') },
+  { id: 'provincia', label: t('Province', 'Provinces'), hint: t('Confini provinciali', 'Provincial boundaries') },
 ]
 
 function ZoningSelect({ value, onChange }: { value: Livello; onChange: (l: Livello) => void }) {
@@ -38,16 +40,17 @@ function ZoningSelect({ value, onChange }: { value: Livello; onChange: (l: Livel
   const ref = useRef<HTMLDivElement>(null)
   const close = useCallback(() => setOpen(false), [])
   useClickOutside(ref, close, open)
+  const LIVELLI = livelli()
   const current = LIVELLI.find((l) => l.id === value)!
   return (
     <div className={`zoning ${open ? 'open' : ''}`} ref={ref}>
       <button className="zoning-btn" onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}>
-        <span className="zoning-label">Zonizzazione</span>
+        <span className="zoning-label">{t('Zonizzazione', 'Zoning')}</span>
         <span className="zoning-value">{current.label}</span>
         <span className="zoning-caret">▾</span>
       </button>
       {open && (
-        <ul className="zoning-menu" role="listbox" aria-label="Zonizzazione">
+        <ul className="zoning-menu" role="listbox" aria-label={t('Zonizzazione', 'Zoning')}>
           {LIVELLI.map((l) => (
             <li key={l.id}>
               <button
@@ -96,6 +99,19 @@ function readUrl(): UrlState {
 
 export default function App() {
   const initial = useMemo(readUrl, [])
+  // lingua e template: applicati in modo sincrono (etichette, formati e palette condivisi), poi ridisegno
+  const [settings, setSettings] = useState<Settings>({ lang: getLang(), theme: getTheme() })
+  const settingsCtx = useMemo(
+    () => ({
+      ...settings,
+      set: (s: Partial<Settings>) => {
+        const next = { ...settings, ...s }
+        applySettings(next)
+        setSettings(next)
+      },
+    }),
+    [settings],
+  )
   const [livello, setLivello] = useState<Livello>(initial.livello)
   const [filters, setFilters] = useState<Filters>(initial.filters)
   const [selection, setSelection] = useState<Selection>(initial.selection)
@@ -265,30 +281,33 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  if (metaError) return <div className="fatal">Impossibile contattare l'API: {metaError}</div>
-  if (!meta) return <div className="fatal">Caricamento…</div>
+  if (metaError) return <div className="fatal">{t("Impossibile contattare l'API", 'Unable to reach the API')}: {metaError}</div>
+  if (!meta) return <div className="fatal">{t('Caricamento…', 'Loading…')}</div>
 
   const f = flows.data
+  const brand = BRAND[settings.theme]
   return (
+    <SettingsContext.Provider value={settingsCtx}>
     <div className="app" style={{ '--sidebar-w': `${sbWidth}px` } as React.CSSProperties}>
       <header className="topbar">
         <div className="brand">
-          <img src="logo-windtre-business.png" alt="WINDTRE Business" className="logo-w3" />
+          <img src={brand.src} alt={brand.alt} className={brand.className} />
           <span className="brand-sep" />
           <img src="logo-ckdelta.png" alt="CKDelta" className="logo-ck" />
         </div>
         <div className="title">
           <h1>Trip Analytics</h1>
           <span>
-            Matrice Origine–Destinazione · Piemonte · {fmtDate(meta.periodo.da, { day: 'numeric', month: 'long' })} →{' '}
+            {t('Matrice Origine–Destinazione · Piemonte', 'Origin–Destination Matrix · Piedmont')} · {fmtDate(meta.periodo.da, { day: 'numeric', month: 'long' })} →{' '}
             {fmtDate(meta.periodo.a, { day: 'numeric', month: 'long', year: 'numeric' })}
           </span>
         </div>
         <div className="topbar-actions">
-          <button className="export-btn" onClick={() => setExportOpen(true)} title="Esporta dati" aria-label="Esporta dati">
+          <button className="export-btn" onClick={() => setExportOpen(true)} title={t('Esporta dati', 'Export data')} aria-label={t('Esporta dati', 'Export data')}>
             <IconDownload width={18} height={18} />
           </button>
           <ZoningSelect value={livello} onChange={changeLivello} />
+          <AccountMenu />
         </div>
       </header>
 
@@ -314,7 +333,7 @@ export default function App() {
           className="sb-resizer"
           role="separator"
           aria-orientation="vertical"
-          aria-label="Ridimensiona il pannello"
+          aria-label={t('Ridimensiona il pannello', 'Resize the panel')}
           aria-valuemin={SB_MIN}
           aria-valuemax={SB_MAX}
           aria-valuenow={sbWidth}
@@ -325,7 +344,7 @@ export default function App() {
             if (e.key === 'ArrowLeft') setSbWidth((w) => Math.max(SB_MIN, w - 20))
             if (e.key === 'ArrowRight') setSbWidth((w) => Math.min(SB_MAX, w + 20))
           }}
-          title="Trascina per ridimensionare · doppio clic per ripristinare"
+          title={t('Trascina per ridimensionare · doppio clic per ripristinare', 'Drag to resize · double-click to reset')}
         />
         <section className="map-area">
           <FlowMap
@@ -359,7 +378,7 @@ export default function App() {
                 <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
                   <path d="M7 4.5v15l13-7.5z" fill="currentColor" />
                 </svg>
-                Riproduci la giornata
+                {t('Riproduci la giornata', 'Play the day')}
               </button>
             </div>
           )}
@@ -369,15 +388,15 @@ export default function App() {
               <span>
                 {selection.type === 'nodo' ? (
                   <>
-                    Zona: <b>{nameOf(selection.id)}</b>
+                    {t('Zona', 'Zone')}: <b>{nameOf(selection.id)}</b>
                   </>
                 ) : (
                   <>
-                    Relazione: <b>{nameOf(selection.a)}</b> ⇄ <b>{nameOf(selection.b)}</b>
+                    {t('Relazione', 'Relation')}: <b>{nameOf(selection.a)}</b> ⇄ <b>{nameOf(selection.b)}</b>
                   </>
                 )}
               </span>
-              <button onClick={() => setSelection(null)} title="Rimuovi selezione (Esc)">
+              <button onClick={() => setSelection(null)} title={t('Rimuovi selezione (Esc)', 'Clear selection (Esc)')}>
                 ✕
               </button>
             </div>
@@ -385,7 +404,7 @@ export default function App() {
 
           <div className={`map-panel ${panelOpen ? 'open' : ''}`}>
             <button className="mp-toggle" onClick={() => setPanelOpen((o) => !o)} aria-expanded={panelOpen} aria-controls="mp-body">
-              <span>Flussi mostrati</span>
+              <span>{t('Flussi mostrati', 'Flows shown')}</span>
               <b className="mp-value">{fmt(f ? Math.min(limit, f.coppie_totali) : limit)}</b>
               <span className="mp-caret">▾</span>
             </button>
@@ -393,7 +412,7 @@ export default function App() {
               <div id="mp-body" className="mp-body">
                 <input
                   id="flow-limit"
-                  aria-label="Numero di flussi mostrati"
+                  aria-label={t('Numero di flussi mostrati', 'Number of flows shown')}
                   className="slider"
                   type="range"
                   min={0}
@@ -404,27 +423,30 @@ export default function App() {
                 />
                 <div className="slider-scale">
                   <span>{FLOW_MIN}</span>
-                  <span>principali</span>
+                  <span>{t('principali', 'top')}</span>
                   <span>{fmt(FLOW_MAX)}</span>
                 </div>
                 {f && (
                   <p className="mp-note">
-                    {fmt(Math.min(limit, f.coppie_totali))} di {fmt(f.coppie_totali)} relazioni attive
+                    {t(
+                      `${fmt(Math.min(limit, f.coppie_totali))} di ${fmt(f.coppie_totali)} relazioni attive`,
+                      `${fmt(Math.min(limit, f.coppie_totali))} of ${fmt(f.coppie_totali)} active relations`,
+                    )}
                   </p>
                 )}
                 <div className="legend">
                   {selection ? (
                     <>
                       <span>
-                        <i style={{ background: COLORS.out }} /> {selection.type === 'nodo' ? 'In uscita' : `Da ${nameOf(selection.a)}`}
+                        <i style={{ background: COLORS.out }} /> {selection.type === 'nodo' ? t('In uscita', 'Outbound') : `${t('Da', 'From')} ${nameOf(selection.a)}`}
                       </span>
                       <span>
-                        <i style={{ background: COLORS.in }} /> {selection.type === 'nodo' ? 'In ingresso' : `Da ${nameOf(selection.b)}`}
+                        <i style={{ background: COLORS.in }} /> {selection.type === 'nodo' ? t('In ingresso', 'Inbound') : `${t('Da', 'From')} ${nameOf(selection.b)}`}
                       </span>
                     </>
                   ) : (
                     <span className="grad">
-                      <i /> spostamenti medi/giorno: più intenso e opaco = flusso maggiore
+                      <i /> {t('spostamenti medi/giorno: più intenso e opaco = flusso maggiore', 'average trips/day: stronger and more opaque = larger flow')}
                     </span>
                   )}
                 </div>
@@ -433,7 +455,7 @@ export default function App() {
           </div>
 
           {AGENT && !agentOpen && !pb.open && (
-            <button className="ag-fab" onClick={() => setAgentOpen(true)} title="Mobility Agent" aria-label="Apri Mobility Agent">
+            <button className="ag-fab" onClick={() => setAgentOpen(true)} title="Mobility Agent" aria-label={t('Apri Mobility Agent', 'Open Mobility Agent')}>
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M12 3v3M5 10a7 7 0 0 1 14 0v5a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z" />
                 <circle cx="9.5" cy="12.5" r="1" fill="currentColor" />
@@ -459,16 +481,22 @@ export default function App() {
           )}
 
           {progress !== null && progress < 1 ? (
-            <div className="busy">Caricamento dei dati · {Math.round(progress * 100)}%</div>
+            <div className="busy">
+              {t('Caricamento dei dati', 'Loading data')} · {Math.round(progress * 100)}%
+            </div>
           ) : (
-            !pbActive && (flows.loading || stats.loading) && <div className="busy">Aggiornamento…</div>
+            !pbActive && (flows.loading || stats.loading) && <div className="busy">{t('Aggiornamento…', 'Updating…')}</div>
           )}
         </section>
       </main>
       {relOpen && rel.data && (
         <RelazioniModal
           rel={rel.data}
-          titolo={selection?.type === 'nodo' ? `Relazioni di ${nameOf(selection.id)}` : 'Tutte le relazioni dell’area di studio'}
+          titolo={
+            selection?.type === 'nodo'
+              ? `${t('Relazioni di', 'Relations of')} ${nameOf(selection.id)}`
+              : t('Tutte le relazioni dell’area di studio', 'All relations in the study area')
+          }
           selection={selection}
           onSelectLink={selectLink}
           onClose={() => setRelOpen(false)}
@@ -476,5 +504,6 @@ export default function App() {
       )}
       {exportOpen && <ExportModal meta={meta} filters={filters} livello={livello} onClose={() => setExportOpen(false)} />}
     </div>
+    </SettingsContext.Provider>
   )
 }

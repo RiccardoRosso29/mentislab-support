@@ -10,6 +10,12 @@ const MAX_ITEMS = 400
 const MAX_BYTES = 900_000
 const MAX_DOMANDA = 3_000 // caratteri, incluso il contesto della dashboard aggiunto dal client
 
+// interfaccia in inglese: stesse regole, risposte e visualizzazioni in inglese
+const LINGUA_EN = `
+
+LINGUA
+L'utente usa l'interfaccia in inglese. Rispondi sempre in inglese, anche se il contesto o i dati sono in italiano. Scrivi in inglese anche titoli, sottotitoli, nomi delle serie, assi, intestazioni e note di grafici e tabelle. I nomi di luoghi (comuni, province, ACE) restano come nei dati. Traduci le etichette delle categorie: giorni (Monday…), fasce orarie (Night, Morning peak, Midday, Evening peak, Evening), motivi (Home, Work, Other), genere (Female, Male), nazionalità (Italian, Foreign), tipologia (Within Piedmont, Cross-border). Usa il punto come separatore decimale e la virgola per le migliaia.`
+
 const INSTRUCTIONS = `Sei Mobility Agent, l'assistente analitico di Trip Analytics, una piattaforma di analisi della mobilità.
 Rispondi sempre in italiano, in modo chiaro e professionale, con frasi brevi.
 
@@ -253,7 +259,7 @@ export default async function handler(req, res) {
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: MODEL,
-        instructions: INSTRUCTIONS,
+        instructions: body.lang === 'en' ? INSTRUCTIONS + LINGUA_EN : INSTRUCTIONS,
         input,
         tools: TOOLS,
         parallel_tool_calls: true,

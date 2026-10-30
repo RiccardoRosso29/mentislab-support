@@ -3,6 +3,7 @@ import type { Relazioni, Selection } from '../api'
 import { SOGLIA_MIN, fmt, fmtN, fmtPct } from '../labels'
 import { toCsv } from './ExportModal'
 import { IconDownload } from './icons'
+import { t } from '../settings'
 
 const PAGE = 300
 
@@ -54,14 +55,14 @@ export default function RelazioniModal({ rel, titolo, selection, onSelectLink, o
       <div className="rl" role="dialog" aria-modal="true" aria-labelledby="rl-title">
         <header className="xp-head">
           <div>
-            <span className="xp-eyebrow">Relazioni origine–destinazione</span>
+            <span className="xp-eyebrow">{t('Relazioni origine–destinazione', 'Origin–destination relations')}</span>
             <h2 id="rl-title">{titolo}</h2>
           </div>
           <div className="xp-head-right">
-            <span className="xp-shield" title={`Sono escluse le relazioni con meno di ${rel.soglia} spostamenti nel periodo`}>
-              {fmt(rel.relazioni.length)} relazioni · k ≥ {rel.soglia}
+            <span className="xp-shield" title={t(`Sono escluse le relazioni con meno di ${rel.soglia} spostamenti nel periodo`, `Relations with fewer than ${rel.soglia} trips in the period are excluded`)}>
+              {fmt(rel.relazioni.length)} {t('relazioni', 'relations')} · k ≥ {rel.soglia}
             </span>
-            <button className="xp-x" onClick={onClose} aria-label="Chiudi">
+            <button className="xp-x" onClick={onClose} aria-label={t('Chiudi', 'Close')}>
               <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
                 <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
@@ -72,7 +73,7 @@ export default function RelazioniModal({ rel, titolo, selection, onSelectLink, o
           <input
             id="rl-search"
             type="search"
-            placeholder="Cerca una zona…"
+            placeholder={t('Cerca una zona…', 'Search a zone…')}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
@@ -80,10 +81,11 @@ export default function RelazioniModal({ rel, titolo, selection, onSelectLink, o
             }}
           />
           <span>
-            {query ? `${fmt(rows.length)} risultati · ` : ''}
-            {fmt(rel.sotto_soglia)} relazioni sotto soglia non mostrate
+            {query ? `${fmt(rows.length)} ${t('risultati', 'results')} · ` : ''}
+            {t(`${fmt(rel.sotto_soglia)} relazioni sotto soglia non mostrate`, `${fmt(rel.sotto_soglia)} relations below the threshold not shown`)}
           </span>
-          <button className="rl-export" onClick={download} title={query ? 'Esporta i risultati della ricerca (CSV)' : 'Esporta tutte le relazioni (CSV)'} aria-label="Esporta in CSV">
+          <button className="rl-export" onClick={download} title={query ? t('Esporta i risultati della ricerca (CSV)', 'Export the search results (CSV)') : t('Esporta tutte le relazioni (CSV)', 'Export all relations (CSV)')}
+            aria-label={t('Esporta in CSV', 'Export to CSV')}>
             <IconDownload width={17} height={17} />
           </button>
         </div>
@@ -92,11 +94,11 @@ export default function RelazioniModal({ rel, titolo, selection, onSelectLink, o
             <thead>
               <tr>
                 <th className="num">#</th>
-                <th>Origine</th>
-                <th>Destinazione</th>
-                <th className="num">Spostamenti medi / giorno</th>
-                <th className="num">Spostamenti nel periodo</th>
-                <th className="num">Quota</th>
+                <th>{t('Origine', 'Origin')}</th>
+                <th>{t('Destinazione', 'Destination')}</th>
+                <th className="num">{t('Spostamenti medi / giorno', 'Average trips / day')}</th>
+                <th className="num">{t('Spostamenti nel periodo', 'Trips in the period')}</th>
+                <th className="num">{t('Quota', 'Share')}</th>
               </tr>
             </thead>
             <tbody>
@@ -121,10 +123,13 @@ export default function RelazioniModal({ rel, titolo, selection, onSelectLink, o
           </table>
           {rows.length > shown && (
             <button className="rl-more" onClick={() => setShown((n) => n + PAGE)}>
-              Mostra altre {fmt(Math.min(PAGE, rows.length - shown))} di {fmt(rows.length - shown)}
+              {t(
+                `Mostra altre ${fmt(Math.min(PAGE, rows.length - shown))} di ${fmt(rows.length - shown)}`,
+                `Show ${fmt(Math.min(PAGE, rows.length - shown))} more of ${fmt(rows.length - shown)}`,
+              )}
             </button>
           )}
-          {rows.length === 0 && <p className="sb-empty">Nessuna relazione per «{query}».</p>}
+          {rows.length === 0 && <p className="sb-empty">{t(`Nessuna relazione per «${query}».`, `No relations for “${query}”.`)}</p>}
         </div>
       </div>
     </div>

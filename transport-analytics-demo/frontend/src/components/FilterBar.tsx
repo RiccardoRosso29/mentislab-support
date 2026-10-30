@@ -4,6 +4,7 @@ import { DOW, ETA, FASCE, GENERI, MOTIVO_PAIRS, NAZIONALITA, TIPOLOGIE, etaLabel
 import DateRange from './DateRange'
 import { IconReset } from './icons'
 import MultiSelect, { type Option } from './MultiSelect'
+import { getLang, t } from '../settings'
 
 interface Props {
   meta: Meta
@@ -26,12 +27,13 @@ export default function FilterBar({ meta, filters, onChange }: Props) {
       .filter((a) => a.piemonte && multi.has(a.comune_id))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'it', { numeric: true }))
     return [
-      ...provP.map((p) => ({ value: `p:${p.id}`, label: p.nome, hint: 'provincia', group: 'Province del Piemonte' })),
-      ...comuni.map((z) => ({ value: `c:${z.id}`, label: z.nome, hint: z.prov_nome, group: 'Comuni del Piemonte' })),
-      ...ace.map((a) => ({ value: `a:${a.id}`, label: a.nome, hint: a.prov_nome, group: 'Aree di censimento ISTAT (ACE)' })),
-      ...provX.map((p) => ({ value: `p:${p.id}`, label: p.nome, hint: p.regione, group: 'Province fuori regione' })),
+      ...provP.map((p) => ({ value: `p:${p.id}`, label: p.nome, hint: t('provincia', 'province'), group: t('Province del Piemonte', 'Provinces of Piedmont') })),
+      ...comuni.map((z) => ({ value: `c:${z.id}`, label: z.nome, hint: z.prov_nome, group: t('Comuni del Piemonte', 'Municipalities of Piedmont') })),
+      ...ace.map((a) => ({ value: `a:${a.id}`, label: a.nome, hint: a.prov_nome, group: t('Aree di censimento ISTAT (ACE)', 'ISTAT census areas (ACE)') })),
+      ...provX.map((p) => ({ value: `p:${p.id}`, label: p.nome, hint: p.regione, group: t('Province fuori regione', 'Provinces outside the region') })),
     ]
-  }, [meta])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta, getLang()])
 
   const fasciaOptions = meta.fasce.map((f) => ({ value: f.id, label: FASCE[f.id] ?? f.id, hint: `${f.da}–${f.a + 1}` }))
   const active = hasActiveFilters(filters)
@@ -40,16 +42,16 @@ export default function FilterBar({ meta, filters, onChange }: Props) {
     <div className="filterbar">
       <DateRange min={meta.periodo.da} max={meta.periodo.a} value={filters.periodo} onChange={set('periodo')} />
       <MultiSelect
-        label="Giorno"
+        label={t('Giorno', 'Day')}
         options={DOW.map((d) => ({ value: String(d.id), label: d.label }))}
         value={filters.dow.map(String)}
         onChange={(v) => set('dow')(v.map(Number).sort())}
         width={200}
       />
-      <MultiSelect label="Fascia oraria" options={fasciaOptions} value={filters.fascia} onChange={set('fascia')} width={230} />
-      <MultiSelect label="Origine" options={zoneOptions} value={filters.origine} onChange={set('origine')} searchable width={300} />
+      <MultiSelect label={t('Fascia oraria', 'Time slot')} options={fasciaOptions} value={filters.fascia} onChange={set('fascia')} width={230} />
+      <MultiSelect label={t('Origine', 'Origin')} options={zoneOptions} value={filters.origine} onChange={set('origine')} searchable width={300} />
       <MultiSelect
-        label="Destinazione"
+        label={t('Destinazione', 'Destination')}
         options={zoneOptions}
         value={filters.destinazione}
         onChange={set('destinazione')}
@@ -57,35 +59,35 @@ export default function FilterBar({ meta, filters, onChange }: Props) {
         width={300}
       />
       <MultiSelect
-        label="Motivo"
+        label={t('Motivo', 'Purpose')}
         options={MOTIVO_PAIRS.map((p) => ({ value: p, label: motivoPairLabel(p) }))}
         value={filters.motivo}
         onChange={set('motivo')}
         width={260}
       />
       <MultiSelect
-        label="Genere"
+        label={t('Genere', 'Gender')}
         options={Object.entries(GENERI).map(([value, label]) => ({ value, label }))}
         value={filters.genere}
         onChange={set('genere')}
         width={180}
       />
       <MultiSelect
-        label="Età"
+        label={t('Età', 'Age')}
         options={ETA.map((e) => ({ value: e, label: etaLabel(e) }))}
         value={filters.eta}
         onChange={set('eta')}
         width={180}
       />
       <MultiSelect
-        label="Nazionalità"
+        label={t('Nazionalità', 'Nationality')}
         options={Object.entries(NAZIONALITA).map(([value, label]) => ({ value, label }))}
         value={filters.nazionalita}
         onChange={set('nazionalita')}
         width={200}
       />
       <MultiSelect
-        label="Tipologia"
+        label={t('Tipologia', 'Trip type')}
         options={Object.entries(TIPOLOGIE).map(([value, label]) => ({ value, label }))}
         value={filters.tipologia}
         onChange={set('tipologia')}
@@ -95,8 +97,8 @@ export default function FilterBar({ meta, filters, onChange }: Props) {
         className="reset"
         disabled={!active}
         onClick={() => onChange(EMPTY_FILTERS)}
-        title="Azzera filtri"
-        aria-label="Azzera filtri"
+        title={t('Azzera filtri', 'Clear filters')}
+        aria-label={t('Azzera filtri', 'Clear filters')}
       >
         <IconReset width={17} height={17} />
       </button>

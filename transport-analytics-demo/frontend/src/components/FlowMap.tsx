@@ -6,6 +6,7 @@ import MapGL from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Flows, Livello, Selection } from '../api'
 import { fmtN as fmt } from '../labels' // tutti i valori della mappa sono conteggi di spostamenti
+import { t as tr, useSettings, type Theme } from '../settings'
 import { isStatic } from '../local/client'
 
 type RGBA = [number, number, number, number]
@@ -36,10 +37,10 @@ interface Props {
 }
 
 export type Basemap = 'chiara' | 'strade' | 'satellite'
-export const BASEMAPS: { id: Basemap; label: string }[] = [
-  { id: 'chiara', label: 'Chiara' },
-  { id: 'strade', label: 'Strade' },
-  { id: 'satellite', label: 'Satellite' },
+export const BASEMAPS: { id: Basemap; label: () => string }[] = [
+  { id: 'chiara', label: () => tr('Chiara', 'Light') },
+  { id: 'strade', label: () => tr('Strade', 'Streets') },
+  { id: 'satellite', label: () => 'Satellite' },
 ]
 /** La mappa di base usa tessere esterne: esclusa solo dove l'hosting le blocca (Artifact claude.ai). */
 export const BASEMAP_DISPONIBILE = !isStatic || import.meta.env.VITE_BASEMAP === '1'
@@ -67,10 +68,11 @@ const INITIAL_VIEW = { longitude: 7.95, latitude: 45.05, zoom: 7.3, pitch: 0, be
 const SEL_FILL: RGBA = [52, 84, 120, 46]
 const SEL_LINE: RGBA = [52, 84, 120, 230]
 const SEL_HOVER: RGBA = [52, 84, 120, 34]
-const OUT: RGBA = [242, 140, 40, 220]
-const IN: RGBA = [111, 66, 193, 210]
-const NEUTRAL_LO: RGBA = [246, 178, 107, 30]
-const NEUTRAL_HI: RGBA = [224, 108, 0, 240]
+// colori dei flussi per template: in uscita il colore principale, in ingresso un colore che ne resti distinto
+const FLOW_COLORS: Record<Theme, { OUT: RGBA; IN: RGBA; NEUTRAL_LO: RGBA; NEUTRAL_HI: RGBA }> = {
+  windtre: { OUT: [242, 140, 40, 220], IN: [111, 66, 193, 210], NEUTRAL_LO: [246, 178, 107, 30], NEUTRAL_HI: [224, 108, 0, 240] },
+  three: { OUT: [153, 102, 255, 220], IN: [237, 143, 38, 210], NEUTRAL_LO: [190, 160, 255, 30], NEUTRAL_HI: [108, 43, 217, 240] },
+}
 
 const lerp = (a: RGBA, b: RGBA, t: number): RGBA => a.map((v, i) => Math.round(v + (b[i] - v) * t)) as RGBA
 // l'opacità cresce con il volume: i flussi minori restano sullo sfondo
@@ -110,8 +112,10 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
     return m
   }, [flows])
 
+  const { theme } = useSettings()
   const arcs = useMemo<Arc[]>(() => {
     if (!flows) return []
+    const { OUT, IN, NEUTRAL_LO, NEUTRAL_HI } = FLOW_COLORS[theme]
     const max = scale?.arc ?? Math.max(1, ...flows.flussi.map((f) => f.n))
     const selNode = selection?.type === 'nodo' ? selection.id : null
     const out: Arc[] = []
@@ -129,7 +133,7 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
       out.push({ ...f, path: curve([a.lon, a.lat], [b.lon, b.lat]), color, width: 1 + t * 11 })
     }
     return out.reverse() // i flussi maggiori disegnati per ultimi, sopra gli altri
-  }, [flows, nodes, selection, scale])
+  }, [flows, nodes, selection, scale, theme])
 
   const maxTot = useMemo(
     () => scale?.node ?? Math.max(1, ...[...nodeTotals.values()].map((v) => v.tot)),
@@ -272,15 +276,18 @@ export default function FlowMap({ livello, flows, nodes, aree, province, selecti
     const layer = info.layer?.id
     if (layer === 'flussi') {
       const back = flows?.flussi.find((f) => f.o === o.d && f.d === o.o)
-      return `${nodes.get(o.o)?.nome} → ${nodes.get(o.d)?.nome}\n${fmt(o.n)} spostamenti/giorno${
-        back ? `\n(ritorno: ${fmt(back.n)})` : ''
+      return `${nodes.get(o.o)?.nome} → ${nodes.get(o.d)?.nome}\n${fmt(o.n)} ${tr('spostamenti/giorno', 'trips/day')}${
+        back ? `\n(${tr('ritorno', 'return')}: ${fmt(back.n)})` : ''
       }`
     }
     const id = layer === 'nodi' ? o.info.id : zoneId(o, layer === 'aree' ? 'aree' : 'provincia')
     const t = nodeTotals.get(id)
     const nome = nodes.get(id)?.nome
     if (!nome || !t) return null
-    return `${nome}\nIn uscita: ${fmt(t.uscita)} · In ingresso: ${fmt(t.ingresso)}\nInterni: ${fmt(t.interni)} (medi/giorno)`
+    return tr(
+      `${nome}\nIn uscita: ${fmt(t.uscita)} · In ingresso: ${fmt(t.ingresso)}\nInterni: ${fmt(t.interni)} (medi/giorno)`,
+      `${nome}\nOutbound: ${fmt(t.uscita)} · Inbound: ${fmt(t.ingresso)}\nInternal: ${fmt(t.interni)} (daily average)`,
+    )
   }
 
   const onClick = (info: PickingInfo) => {

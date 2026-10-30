@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption, LineSeriesOption } from 'echarts'
-import { COLORS, fmtCompact, fmtCompactN, fmtN as fmt, fmtPct } from '../labels'
+import { COLORS, fmtCompact, fmtCompactN, fmtN as fmt, fmtPct, getLocale } from '../labels'
+import { getLang, getTheme, t } from '../settings'
 
 const FONT = "Montserrat, 'Helvetica Neue', Arial, sans-serif"
 
@@ -40,21 +41,19 @@ export interface Pick {
 // opacità degli elementi non selezionati quando un grafico ha una selezione attiva
 const DIM = 0.28
 
-/** Colore riservato al benchmark: diverso da tutti quelli dei dati, così il riferimento resta riconoscibile. */
-export const BENCH = '#2563eb'
 
 /** Serie del benchmark: linea tratteggiata sottile che unisce i valori attesi con il profilo medio, con un pallino per barra. */
 const benchSeries = (bench: (number | null)[]): LineSeriesOption => ({
   type: 'line',
-  name: 'Profilo medio',
+  name: t('Profilo medio', 'Average profile'),
   data: bench,
   z: 10,
   symbol: 'circle',
   symbolSize: 5,
   showSymbol: true,
   connectNulls: true,
-  lineStyle: { color: BENCH, width: 1.2, type: [4, 3] },
-  itemStyle: { color: BENCH, borderColor: '#fff', borderWidth: 1 },
+  lineStyle: { color: COLORS.bench, width: 1.2, type: [4, 3] },
+  itemStyle: { color: COLORS.bench, borderColor: '#fff', borderWidth: 1 },
   // nessun effetto al passaggio del mouse: la linea resta ferma, il valore compare solo nel tooltip
   emphasis: { disabled: true },
   tooltip: { valueFormatter: (v: unknown) => fmt(v as number) },
@@ -65,7 +64,8 @@ type OnPick = (p: Pick) => void
 export function Chart({ option, height = 180, onPick }: { option: EChartsOption; height?: number; onPick?: OnPick }) {
   // L'opzione contiene funzioni (formatter) e cambia identità a ogni render: la si ricrea solo quando
   // cambiano i dati, altrimenti ECharts ridisegna il grafico da zero (effetto "lampeggio").
-  const key = JSON.stringify(option)
+  // anche lingua e template: formattazione dei numeri e colori stanno in parte nelle funzioni
+  const key = `${getLang()}|${getTheme()}|${JSON.stringify(option)}`
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const opt = useMemo(() => base(option), [key])
   return (
@@ -119,7 +119,7 @@ export function BarChart({
         series: [
           {
             type: 'bar',
-            name: bench ? 'Selezione' : undefined,
+            name: bench ? t('Selezione', 'Selection') : undefined,
             barMaxWidth: 34,
             data: values.map((v, i) => ({
               value: v,
@@ -139,7 +139,7 @@ export function BarChart({
 }
 
 /** Differenza in punti percentuali, con segno: «+1,2 pp». */
-export const fmtPp = (d: number) => `${d > 0 ? '+' : d < 0 ? '−' : '±'}${Math.abs(d * 100).toLocaleString('it-IT', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} pp`
+export const fmtPp = (d: number) => `${d > 0 ? '+' : d < 0 ? '−' : '±'}${Math.abs(d * 100).toLocaleString(getLocale(), { maximumFractionDigits: 1, minimumFractionDigits: 1 })} pp`
 
 export function Donut({
   items,
@@ -177,7 +177,7 @@ export function Donut({
               rich: {
                 n: { fontSize: 12, color: COLORS.muted, fontFamily: FONT },
                 v: { fontSize: 16, fontWeight: 700, fontFamily: FONT, color: COLORS.text },
-                d: { fontSize: 10.5, fontWeight: 600, fontFamily: FONT, color: BENCH, padding: [2, 0, 0, 0] },
+                d: { fontSize: 10.5, fontWeight: 600, fontFamily: FONT, color: COLORS.bench, padding: [2, 0, 0, 0] },
               },
             },
             labelLine: { length: 8, length2: 10 },
@@ -270,7 +270,7 @@ export function Heatmap({
         grid: { left: 8, right: 8, top: 22, bottom: 4, containLabel: true },
         xAxis: { ...catAxis(cols), position: 'top', name: 'destinazione', nameLocation: 'middle', nameGap: 0, nameTextStyle: { color: 'transparent' } },
         yAxis: { ...catAxis(rows), inverse: true },
-        visualMap: { show: false, min: 0, max, inRange: { color: ['#fdf0e2', COLORS.accent, COLORS.accentDark] } },
+        visualMap: { show: false, min: 0, max, inRange: { color: [COLORS.accentTint, COLORS.accent, COLORS.accentDark] } },
         series: [
           {
             type: 'heatmap',
@@ -316,7 +316,7 @@ export function LineDaily({
         series: [
           {
             type: 'bar',
-            name: bench ? 'Selezione' : undefined,
+            name: bench ? t('Selezione', 'Selection') : undefined,
             barMaxWidth: 18,
             data: values.map((v, i) => ({
               value: v,
@@ -369,8 +369,10 @@ export function StackBar({
           ) : null,
         )}
         {benchShare != null && (
-          <span className="stack-bench" style={{ left: `${benchShare * 100}%` }} title={`Profilo medio: ${fmtPct(benchShare)} ${items[0].label}`}>
-            <i>media {fmtPct(benchShare)}</i>
+          <span className="stack-bench" style={{ left: `${benchShare * 100}%` }} title={`${t('Profilo medio', 'Average profile')}: ${fmtPct(benchShare)} ${items[0].label}`}>
+            <i>
+              {t('media', 'avg')} {fmtPct(benchShare)}
+            </i>
           </span>
         )}
         {tip && items[tip.i] && (

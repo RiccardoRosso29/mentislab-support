@@ -17,10 +17,12 @@ import {
   fmtPct,
 } from '../labels'
 import { BarChart, Donut, GroupedBars, Heatmap, LineDaily, StackBar, fmtPp } from './Charts'
+import { t as tr, useSettings } from '../settings'
 
 // i motivi di spostamento sono un modulo commerciale a sé: sezione separata, sempre per ultima
-const SEZIONI = { panoramica: 'Panoramica', comportamenti: 'Comportamenti', profili: 'Profili', motivi: 'Motivi' } as const
+const SEZIONI = { panoramica: ['Panoramica', 'Overview'], comportamenti: ['Comportamenti', 'Behaviour'], profili: ['Profili', 'Profiles'], motivi: ['Motivi', 'Purposes'] } as const
 type Sezione = keyof typeof SEZIONI
+const sezione = (k: Sezione) => tr(...SEZIONI[k])
 const ALL = new Set(Object.keys(SEZIONI) as Sezione[])
 
 interface Item {
@@ -60,9 +62,17 @@ function OdTable({
   onSelectLink: (a: number, b: number) => void
   onOpenAll: () => void
 }) {
-  if (!rel) return <p className="sb-empty">Caricamento…</p>
+  if (!rel) return <p className="sb-empty">{tr('Caricamento…', 'Loading…')}</p>
   const list = rel.relazioni
-  if (!list.length) return <p className="sb-empty">Nessuna relazione tra zone diverse sopra la soglia di {rel.soglia} spostamenti.</p>
+  if (!list.length)
+    return (
+      <p className="sb-empty">
+        {tr(
+          `Nessuna relazione tra zone diverse sopra la soglia di ${rel.soglia} spostamenti.`,
+          `No relations between different zones above the threshold of ${rel.soglia} trips.`,
+        )}
+      </p>
+    )
 
   type Row = { r: (typeof list)[number]; rank: number } | 'gap'
   let rows: Row[]
@@ -86,9 +96,9 @@ function OdTable({
         <thead>
           <tr>
             <th className="idx">#</th>
-            <th>Origine → destinazione</th>
-            <th className="num">Medi / giorno</th>
-            <th className="num">Quota</th>
+            <th>{tr('Origine → destinazione', 'Origin → destination')}</th>
+            <th className="num">{tr('Medi / giorno', 'Avg / day')}</th>
+            <th className="num">{tr('Quota', 'Share')}</th>
           </tr>
         </thead>
         <tbody>
@@ -111,7 +121,7 @@ function OdTable({
         </tbody>
       </table>
       <button className="od-all" onClick={onOpenAll}>
-        Vedi tutte le {fmt(list.length)} relazioni
+        {tr(`Vedi tutte le ${fmt(list.length)} relazioni`, `See all ${fmt(list.length)} relations`)}
       </button>
     </>
   )
@@ -135,7 +145,7 @@ function Card({ title, subtitle, children, filtro, azione }: CardProps) {
           <h3>{title}</h3>
           <div className="card-title-right">
             {filtro?.attivo && (
-              <button className="card-filter" onClick={filtro.onClear} title="Rimuovi il filtro">
+              <button className="card-filter" onClick={filtro.onClear} title={tr('Rimuovi il filtro', 'Remove filter')}>
                 <span className="card-filter-txt">{filtro.attivo}</span>
                 <span className="card-filter-x" aria-hidden>✕</span>
               </button>
@@ -161,6 +171,7 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
 }
 
 function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, filters, onFilters, bench, rel, onOpenRelazioni, odFree, livello }: Props) {
+  useSettings() // ridisegno al cambio di lingua o template (il componente è memoizzato)
   const [focus, setFocus] = useState<Set<Sezione>>(ALL)
   const [hideNA, setHideNA] = useState(true)
   // con tutte le sezioni attive il primo clic isola la sezione; svuotando la selezione si torna a tutte
@@ -173,7 +184,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       return next.size ? next : ALL
     })
 
-  if (!stats) return <aside className="sidebar">{loading && <div className="sb-loading">Caricamento…</div>}</aside>
+  if (!stats) return <aside className="sidebar">{loading && <div className="sb-loading">{tr('Caricamento…', 'Loading…')}</div>}</aside>
 
   const nd = stats.n_giorni || 1
   const perDay = (v: number) => v / nd
@@ -211,14 +222,14 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
   const legendaSettimana = (
     <p className="day-legend">
       <span>
-        <i style={{ background: COLORS.accent }} /> Infrasettimanale
+        <i style={{ background: COLORS.accent }} /> {tr('Infrasettimanale', 'Weekday')}
       </span>
       <span>
         <i style={{ background: COLORS.secondary }} /> Weekend
       </span>
     </p>
   )
-  const benchNote = bx ? <p className="bench-note"><i /> Profilo medio dell’area di studio, riportato sul totale della selezione</p> : null
+  const benchNote = bx ? <p className="bench-note"><i /> {tr('Profilo medio dell’area di studio, riportato sul totale della selezione', 'Study-area average profile, scaled to the selection total')}</p> : null
   const genereTot = (g: string) => cx.genere[g] ?? 0
   const etaBy = (g: string) => ETA.filter((e) => e !== 'NA').map((e) => perDay(cx.eta.find((r) => r.genere === g && r.eta === e)?.n ?? 0))
   const naDemo = genereTot('NA')
@@ -268,9 +279,9 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
     if (selection?.type !== 'nodo') return null
     const t = tok(selection.id)
     const opts = [
-      { label: 'In uscita', o: [t], d: [] as string[], xi: true },
-      { label: 'In ingresso', o: [] as string[], d: [t], xi: true },
-      { label: 'Interni', o: [t], d: [t], xi: false },
+      { label: tr('In uscita', 'Outbound'), o: [t], d: [] as string[], xi: true },
+      { label: tr('In ingresso', 'Inbound'), o: [] as string[], d: [t], xi: true },
+      { label: tr('Interni', 'Internal'), o: [t], d: [t], xi: false },
     ]
     const attivo = opts.findIndex((x) => odState(x.o, x.d, x.xi))
     return { opts, attivo }
@@ -288,8 +299,8 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       sezione: 'panoramica',
       render: () => (
         <div className="kpi-grid">
-          <Kpi label="Spostamenti medi / giorno" value={fmtN(stats.kpi.media_giornaliera)} />
-          <Kpi label="Spostamenti nel periodo" value={fmtN(total)} />
+          <Kpi label={tr('Spostamenti medi / giorno', 'Average trips / day')} value={fmtN(stats.kpi.media_giornaliera)} />
+          <Kpi label={tr('Spostamenti nel periodo', 'Trips in the period')} value={fmtN(total)} />
         </div>
       ),
     },
@@ -299,17 +310,17 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       show: Boolean(stats.kpi.nodo),
       render: () => (
         <Card
-          title="Bilancio della zona"
-          subtitle="Spostamenti medi giornalieri"
+          title={tr('Bilancio della zona', 'Zone balance')}
+          subtitle={tr('Spostamenti medi giornalieri', 'Average daily trips')}
           filtro={{ attivo: bilancio && bilancio.attivo >= 0 ? bilancio.opts[bilancio.attivo].label : null, onClear: clearOD }}
         >
           <StackBar
             onPick={(i) => bilancio && setOD(bilancio.opts[i].o, bilancio.opts[i].d, bilancio.opts[i].xi)}
             selected={bilancio && bilancio.attivo >= 0 ? (i) => i === bilancio.attivo : undefined}
             items={[
-              { label: 'In uscita', value: perDay(nodo?.uscita ?? 0), color: COLORS.out },
-              { label: 'In ingresso', value: perDay(nodo?.ingresso ?? 0), color: COLORS.in },
-              { label: 'Interni', value: perDay(nodo?.interni ?? 0), color: COLORS.secondary },
+              { label: tr('In uscita', 'Outbound'), value: perDay(nodo?.uscita ?? 0), color: COLORS.out },
+              { label: tr('In ingresso', 'Inbound'), value: perDay(nodo?.ingresso ?? 0), color: COLORS.in },
+              { label: tr('Interni', 'Internal'), value: perDay(nodo?.interni ?? 0), color: COLORS.secondary },
             ]}
           />
         </Card>
@@ -321,8 +332,8 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       show: selection?.type === 'link',
       render: () => (
         <Card
-          title="Direzioni"
-          subtitle="Spostamenti medi giornalieri"
+          title={tr('Direzioni', 'Directions')}
+          subtitle={tr('Spostamenti medi giornalieri', 'Average daily trips')}
           filtro={{
             attivo: direzioni && direzioni.attivo >= 0 ? `${direzioni.rows[direzioni.attivo].o_nome} → ${direzioni.rows[direzioni.attivo].d_nome}` : null,
             onClear: clearOD,
@@ -345,8 +356,8 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       sezione: 'panoramica',
       render: () => (
         <Card
-          title="Andamento giornaliero"
-          subtitle="Spostamenti totali per giorno"
+          title={tr('Andamento giornaliero', 'Daily trend')}
+          subtitle={tr('Spostamenti totali per giorno', 'Total trips per day')}
           filtro={{ attivo: periodoAttivo, onClear: () => onFilters({ ...filters, periodo: [] }) }}
         >
           {legendaSettimana}
@@ -370,13 +381,19 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       sezione: 'panoramica',
       render: () => (
         <Card
-          title={selection?.type === 'nodo' ? 'Relazioni della zona' : selection?.type === 'link' ? 'Posizione nella classifica' : 'Principali relazioni OD'}
+          title={
+            selection?.type === 'nodo'
+              ? tr('Relazioni della zona', 'Zone relations')
+              : selection?.type === 'link'
+                ? tr('Posizione nella classifica', 'Ranking position')
+                : tr('Principali relazioni OD', 'Top OD relations')
+          }
           subtitle={
             selection?.type === 'nodo'
-              ? 'Relazioni con origine o destinazione nella zona selezionata'
+              ? tr('Relazioni con origine o destinazione nella zona selezionata', 'Relations with origin or destination in the selected zone')
               : selection?.type === 'link'
-                ? 'La relazione selezionata tra tutte quelle dell’area di studio'
-                : 'Spostamenti medi giornalieri · clic su una riga per selezionarla'
+                ? tr('La relazione selezionata tra tutte quelle dell’area di studio', 'The selected relation among all those in the study area')
+                : tr('Spostamenti medi giornalieri · clic su una riga per selezionarla', 'Average daily trips · click a row to select it')
           }
         >
           <OdTable rel={rel} selection={selection} onSelectLink={onSelectLink} onOpenAll={onOpenRelazioni} />
@@ -388,8 +405,8 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       sezione: 'comportamenti',
       render: () => (
         <Card
-          title="Giorno della settimana"
-          subtitle="Spostamenti medi per giorno"
+          title={tr('Giorno della settimana', 'Day of the week')}
+          subtitle={tr('Spostamenti medi per giorno', 'Average trips per day')}
           filtro={filtro('dow', (v) => DOW[Number(v) - 1].short)}
         >
           {legendaSettimana}
@@ -409,7 +426,9 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       id: 'fascia',
       sezione: 'comportamenti',
       render: () => (
-        <Card title="Fascia oraria di partenza" subtitle="Spostamenti medi giornalieri per fascia" filtro={filtro('fascia', (v) => FASCE[v])}>
+        <Card
+          title={tr('Fascia oraria di partenza', 'Departure time slot')}
+          subtitle={tr('Spostamenti medi giornalieri per fascia', 'Average daily trips per time slot')} filtro={filtro('fascia', (v) => FASCE[v])}>
           <BarChart
             onPick={(p) => choose('fascia', Object.keys(FASCE)[p.dataIndex], p.multi)}
             highlight={hl('fascia', (i) => Object.keys(FASCE)[i])}
@@ -428,8 +447,11 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       sezione: 'motivi',
       render: () => (
         <Card
-          title="Motivo dello spostamento"
-          subtitle="Origine (righe) → destinazione (colonne): Casa = luogo di residenza, Lavoro = luogo di lavoro, Altro = luogo visitato"
+          title={tr('Motivo dello spostamento', 'Trip purpose')}
+          subtitle={tr(
+            'Origine (righe) → destinazione (colonne): Casa = luogo di residenza, Lavoro = luogo di lavoro, Altro = luogo visitato',
+            'Origin (rows) → destination (columns): Home = place of residence, Work = workplace, Other = place visited',
+          )}
           filtro={filtro('motivo', (v) => String(v).split('>').map((m) => MOTIVI[m]).join('→'))}
         >
           <Heatmap
@@ -453,7 +475,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
                   <span>{r.label}</span>
                   <span className="rank-bar">
                     <i style={{ width: `${(quota / scala) * 100}%` }} />
-                    {b != null && <span className="rank-bench" style={{ left: `${Math.min(100, (b / scala) * 100)}%` }} title={`Profilo medio: ${fmtPct(b)}`} />}
+                    {b != null && <span className="rank-bench" style={{ left: `${Math.min(100, (b / scala) * 100)}%` }} title={`${tr('Profilo medio', 'Average profile')}: ${fmtPct(b)}`} />}
                   </span>
                   <b>
                     {fmtPct(quota)}
@@ -465,7 +487,11 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
           </ol>
           {bx && (
             <p className="bench-note tick">
-              <i /> Quota della combinazione nel profilo medio dell’area; a destra lo scarto in punti percentuali
+              <i />{' '}
+              {tr(
+                'Quota della combinazione nel profilo medio dell’area; a destra lo scarto in punti percentuali',
+                'Share of the combination in the area’s average profile; on the right, the gap in percentage points',
+              )}
             </p>
           )}
         </Card>
@@ -475,7 +501,9 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       id: 'tipologia',
       sezione: 'comportamenti',
       render: () => (
-        <Card title="Tipologia di spostamento" subtitle="Spostamenti medi giornalieri" filtro={filtro('tipologia', (v) => TIPOLOGIE[v])}>
+        <Card
+          title={tr('Tipologia di spostamento', 'Trip type')}
+          subtitle={tr('Spostamenti medi giornalieri', 'Average daily trips')} filtro={filtro('tipologia', (v) => TIPOLOGIE[v])}>
           <StackBar
             onPick={(i, multi) => choose('tipologia', Object.keys(TIPOLOGIE)[i], multi)}
             selected={hl('tipologia', (i) => Object.keys(TIPOLOGIE)[i])}
@@ -494,14 +522,19 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       sezione: 'profili',
       render: () => (
         <Card
-          title="Genere"
-          subtitle={`Spostamenti medi giornalieri per genere${naDemo > 0 && !hideNA ? ' · N/D: viaggiatori stranieri, senza profilo sociodemografico' : ''}`}
+          title={tr('Genere', 'Gender')}
+          subtitle={
+            tr('Spostamenti medi giornalieri per genere', 'Average daily trips by gender') +
+            (naDemo > 0 && !hideNA
+              ? tr(' · N/D: viaggiatori stranieri, senza profilo sociodemografico', ' · N/A: foreign travellers, without a socio-demographic profile')
+              : '')
+          }
           filtro={filtro('genere', (v) => GENERI[v])}
           azione={
             naDemo > 0 && (
               <label className="card-flag">
                 <input id="hide-na" type="checkbox" checked={hideNA} onChange={(e) => setHideNA(e.target.checked)} />
-                Nascondi N/D
+                {tr('Nascondi N/D', 'Hide N/A')}
               </label>
             )
           }
@@ -517,7 +550,9 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
             }))}
             deltas={bx ? deltaQuote(generiVisibili.map(genereTot), generiVisibili.map((g) => bx.genere[g] ?? 0)) : undefined}
           />
-          {benchNote && <p className="bench-note">Sotto ogni quota: scarto in punti percentuali dal profilo medio dell’area</p>}
+          {benchNote && <p className="bench-note">
+              {tr('Sotto ogni quota: scarto in punti percentuali dal profilo medio dell’area', 'Below each share: gap in percentage points from the area’s average profile')}
+            </p>}
         </Card>
       ),
     },
@@ -525,7 +560,9 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       id: 'eta',
       sezione: 'profili',
       render: () => (
-        <Card title="Età e genere" subtitle="Spostamenti medi giornalieri per fascia d'età" filtro={filtro('eta', (v) => etaLabel(String(v)))}>
+        <Card
+          title={tr('Età e genere', 'Age and gender')}
+          subtitle={tr("Spostamenti medi giornalieri per fascia d'età", 'Average daily trips by age group')} filtro={filtro('eta', (v) => etaLabel(String(v)))}>
           <GroupedBars
             onPick={(p) => choose('eta', ETA[p.dataIndex], p.multi)}
             selected={hl('eta', (i) => ETA[i])}
@@ -542,7 +579,9 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
       id: 'nazionalita',
       sezione: 'profili',
       render: () => (
-        <Card title="Nazionalità" subtitle="Spostamenti medi giornalieri" filtro={filtro('nazionalita', (v) => NAZIONALITA[v])}>
+        <Card
+          title={tr('Nazionalità', 'Nationality')}
+          subtitle={tr('Spostamenti medi giornalieri', 'Average daily trips')} filtro={filtro('nazionalita', (v) => NAZIONALITA[v])}>
           <StackBar
             onPick={(i, multi) => choose('nazionalita', Object.keys(NAZIONALITA)[i], multi)}
             selected={hl('nazionalita', (i) => Object.keys(NAZIONALITA)[i])}
@@ -565,23 +604,23 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
     <aside className={`sidebar ${loading ? 'is-loading' : ''}`}>
       <div className="sb-top">
         <div className="sb-context">
-          <h2>Metriche &amp; Insights</h2>
+          <h2>{tr('Metriche & Insights', 'Metrics & Insights')}</h2>
           <p>
             {selection?.type === 'nodo' && (
               <>
-                Zona selezionata: <b>{nameOf(selection.id)}</b>
+                {tr('Zona selezionata', 'Selected zone')}: <b>{nameOf(selection.id)}</b>
               </>
             )}
             {selection?.type === 'link' && (
               <>
-                Relazione: <b>{nameOf(selection.a)}</b> ⇄ <b>{nameOf(selection.b)}</b>
+                {tr('Relazione', 'Relation')}: <b>{nameOf(selection.a)}</b> ⇄ <b>{nameOf(selection.b)}</b>
               </>
             )}
-            {!selection && <>Tutta l'area di studio · clicca una zona o un flusso sulla mappa per approfondire</>}
+            {!selection && tr("Tutta l'area di studio · clicca una zona o un flusso sulla mappa per approfondire", 'Whole study area · click a zone or a flow on the map to drill down')}
           </p>
         </div>
         <div className="sb-finder">
-          <div className="sb-chips" role="group" aria-label="Sezioni visibili">
+          <div className="sb-chips" role="group" aria-label={tr('Sezioni visibili', 'Visible sections')}>
             {(Object.keys(SEZIONI) as Sezione[]).map((k) => {
               const n = items.filter((it) => it.sezione === k && (it.show ?? true)).length
               return (
@@ -591,7 +630,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
                   aria-pressed={focus.has(k)}
                   onClick={() => toggle(k)}
                 >
-                  {SEZIONI[k]} <span>{n}</span>
+                  {sezione(k)} <span>{n}</span>
                 </button>
               )
             })}
@@ -604,14 +643,19 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
         if (!list.length) return null
         return (
           <section key={k} className="sb-section">
-            <h3 className="sb-section-title">{SEZIONI[k]}</h3>
+            <h3 className="sb-section-title">{sezione(k)}</h3>
             {list.map((it) => (
               <div key={it.id}>{it.render()}</div>
             ))}
           </section>
         )
       })}
-      <footer className="sb-foot">Fonte: estrazione matrice OD Piemonte. I valori sono stime, arrotondate in visualizzazione.</footer>
+      <footer className="sb-foot">
+        {tr(
+          'Fonte: estrazione matrice OD Piemonte. I valori sono stime, arrotondate in visualizzazione.',
+          'Source: Piedmont OD matrix extract. Values are estimates, rounded for display.',
+        )}
+      </footer>
     </aside>
   )
 }

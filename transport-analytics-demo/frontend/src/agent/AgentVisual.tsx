@@ -1,12 +1,14 @@
 import type { EChartsOption } from 'echarts'
-import { BENCH, Chart } from '../components/Charts'
+import { Chart } from '../components/Charts'
 import { toCsv } from '../components/ExportModal'
 import { IconDownload } from '../components/icons'
-import { COLORS, fmt, fmtCompactN, fmtN, fmtPct } from '../labels'
+import { COLORS, fmt, fmtCompactN, fmtN, fmtPct, getLocale } from '../labels'
 import type { Visual } from './tools'
+import { t } from '../settings'
 
 // stessa tavolozza della dashboard: arancio primario, grigio scuro secondario, poi i colori di categoria
-const PALETTE = [COLORS.accent, COLORS.secondary, COLORS.purple, COLORS.blue, COLORS.green, COLORS.yellow]
+// letta a ogni grafico: segue il template (il terzo colore è quello che contrasta con il principale)
+const palette = () => [COLORS.accent, COLORS.secondary, COLORS.in, COLORS.blue, COLORS.green, COLORS.yellow]
 const FONT = "Montserrat, 'Helvetica Neue', Arial, sans-serif"
 
 type Cell = number | string | null
@@ -59,8 +61,9 @@ function buildOption(s: ChartSpec): EChartsOption | null {
     dati.length > 1 ? { top: 0, right: 0, icon: 'rect', itemWidth: 10, itemHeight: 10, data: dati.map((x) => x.nome), textStyle: { fontFamily: FONT, fontSize: 11 } } : undefined
   const top = dati.length > 1 ? 30 : 14
 
-  // colore per serie: "evidenza" in arancio, i dati nell'ordine della tavolozza, il benchmark sempre blu tratteggiato
+  // colore per serie: "evidenza" nel colore principale, i dati nell'ordine della tavolozza, il benchmark sempre blu tratteggiato
   let k = 0
+  const PALETTE = palette()
   const color = (x: Serie) => (x.ruolo === 'evidenza' ? COLORS.accent : PALETTE[k++ % PALETTE.length])
   const benchLine = (x: Serie) => ({
     type: 'line' as const,
@@ -68,8 +71,8 @@ function buildOption(s: ChartSpec): EChartsOption | null {
     data: x.valori.map(num),
     symbol: 'circle',
     symbolSize: 5,
-    lineStyle: { color: BENCH, width: 1.2, type: [4, 3] as number[] },
-    itemStyle: { color: BENCH, borderColor: '#fff', borderWidth: 1 },
+    lineStyle: { color: COLORS.bench, width: 1.2, type: [4, 3] as number[] },
+    itemStyle: { color: COLORS.bench, borderColor: '#fff', borderWidth: 1 },
     emphasis: { disabled: true },
     z: 10,
   })
@@ -105,7 +108,7 @@ function buildOption(s: ChartSpec): EChartsOption | null {
       grid: { left: 8, right: 8, top: 24, bottom: 4, containLabel: true },
       xAxis: { ...cat(cols), position: 'top' },
       yAxis: { ...cat(cats), inverse: true },
-      visualMap: { show: false, min: 0, max, inRange: { color: ['#fdf0e2', COLORS.accent, COLORS.accentDark] } },
+      visualMap: { show: false, min: 0, max, inRange: { color: [COLORS.accentTint, COLORS.accent, COLORS.accentDark] } },
       series: [
         {
           type: 'heatmap',
@@ -126,7 +129,7 @@ function buildOption(s: ChartSpec): EChartsOption | null {
       xAxis: value,
       series: serie.map((x) =>
         x.ruolo === 'benchmark'
-          ? { ...benchLine(x), type: 'scatter' as const, symbol: 'rect', symbolSize: [2, 14], itemStyle: { color: BENCH } }
+          ? { ...benchLine(x), type: 'scatter' as const, symbol: 'rect', symbolSize: [2, 14], itemStyle: { color: COLORS.bench } }
           : { type: 'bar' as const, name: x.nome, data: x.valori.map(num), barMaxWidth: 16, itemStyle: { color: color(x), borderRadius: [0, 2, 2, 0] } },
       ),
     }
@@ -159,11 +162,11 @@ function buildOption(s: ChartSpec): EChartsOption | null {
 function TableView({ spec }: { spec: Record<string, unknown> }) {
   const colonne = (spec.colonne as string[]) ?? []
   const righe = (spec.righe as Cell[][]) ?? []
-  const titolo = String(spec.titolo ?? 'Tabella')
+  const titolo = String(spec.titolo ?? t('Tabella', 'Table'))
   const download = () => {
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([toCsv(colonne, righe.map((r) => r.map((v) => (v == null ? '' : v))))], { type: 'text/csv;charset=utf-8' }))
-    a.download = `${titolo.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60) || 'tabella'}.csv`
+    a.download = `${titolo.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60) || t('tabella', 'table')}.csv`
     document.body.appendChild(a)
     a.click()
     a.remove()
@@ -173,7 +176,7 @@ function TableView({ spec }: { spec: Record<string, unknown> }) {
     <div className="ag-visual">
       <div className="ag-visual-head">
         <h4>{titolo}</h4>
-        <button className="ag-dl" onClick={download} title="Scarica la tabella (CSV)" aria-label="Scarica la tabella in CSV">
+        <button className="ag-dl" onClick={download} title={t('Scarica la tabella (CSV)', 'Download the table (CSV)')} aria-label={t('Scarica la tabella in CSV', 'Download the table as CSV')}>
           <IconDownload width={14} height={14} />
         </button>
       </div>
@@ -191,7 +194,7 @@ function TableView({ spec }: { spec: Record<string, unknown> }) {
               <tr key={i}>
                 {r.map((v, j) => (
                   <td key={j} className={typeof v === 'number' ? 'num' : ''}>
-                    {typeof v === 'number' ? (Number.isInteger(v) || Math.abs(v) >= 100 ? fmt(v) : v.toLocaleString('it-IT', { maximumFractionDigits: 3 })) : (v ?? '–')}
+                    {typeof v === 'number' ? (Number.isInteger(v) || Math.abs(v) >= 100 ? fmt(v) : v.toLocaleString(getLocale(), { maximumFractionDigits: 3 })) : (v ?? '–')}
                   </td>
                 ))}
               </tr>

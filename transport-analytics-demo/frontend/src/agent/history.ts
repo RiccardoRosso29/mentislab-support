@@ -1,3 +1,5 @@
+import { getLocale } from '../labels'
+import { t } from '../settings'
 /**
  * Cronologia delle conversazioni del Mobility Agent, salvata nel browser dell'utente (localStorage).
  * È una comodità per singolo utente: se l'archiviazione non è disponibile la chat funziona comunque.
@@ -52,8 +54,8 @@ export const newChatId = () => `${Date.now().toString(36)}${Math.random().toStri
 
 export function relTime(ts: number) {
   const d = (Date.now() - ts) / 1000
-  if (d < 60) return 'adesso'
-  if (d < 3600) return `${Math.floor(d / 60)} min fa`
-  if (d < 86400) return `${Math.floor(d / 3600)} h fa`
-  return new Date(ts).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
+  if (d < 60) return t('adesso', 'now')
+  if (d < 3600) return t(`${Math.floor(d / 60)} min fa`, `${Math.floor(d / 60)} min ago`)
+  if (d < 86400) return t(`${Math.floor(d / 3600)} h fa`, `${Math.floor(d / 3600)} h ago`)
+  return new Date(ts).toLocaleDateString(getLocale(), { day: 'numeric', month: 'short' })
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { getLang, t } from '../settings'
 
 /** Durata massima di una dettatura: oltre, la registrazione si chiude e viene trascritta. */
 const MAX_SECONDI = 120
@@ -40,13 +41,13 @@ export function useDictation(onText: (text: string) => void) {
   const transcribe = async (blob: Blob) => {
     setState('transcribing')
     try {
-      const res = await fetch('api/transcribe', { method: 'POST', headers: { 'Content-Type': blob.type.split(';')[0] }, body: blob })
-      const data = await res.json().catch(() => ({ error: `Risposta non valida (${res.status})` }))
-      if (!res.ok || data.error) throw new Error(data.error || `Errore ${res.status}`)
+      const res = await fetch(`api/transcribe?lang=${getLang()}`, { method: 'POST', headers: { 'Content-Type': blob.type.split(';')[0] }, body: blob })
+      const data = await res.json().catch(() => ({ error: `${t('Risposta non valida', 'Invalid response')} (${res.status})` }))
+      if (!res.ok || data.error) throw new Error(data.error || `${t('Errore', 'Error')} ${res.status}`)
       if (data.text) onTextRef.current(data.text)
-      else setError('Non ho sentito nulla: riprova parlando più vicino al microfono.')
+      else setError(t('Non ho sentito nulla: riprova parlando più vicino al microfono.', 'I didn’t hear anything: try again speaking closer to the microphone.'))
     } catch (e) {
-      setError(`Trascrizione non riuscita: ${(e as Error).message}`)
+      setError(`${t('Trascrizione non riuscita', 'Transcription failed')}: ${(e as Error).message}`)
     } finally {
       setState('idle')
     }
@@ -62,10 +63,10 @@ export function useDictation(onText: (text: string) => void) {
       const name = (e as DOMException).name
       setError(
         name === 'NotAllowedError'
-          ? 'Accesso al microfono negato: consentilo dalle impostazioni del browser per usare la dettatura.'
+          ? t('Accesso al microfono negato: consentilo dalle impostazioni del browser per usare la dettatura.', 'Microphone access denied: allow it in the browser settings to use dictation.')
           : name === 'NotFoundError'
-            ? 'Nessun microfono trovato.'
-            : 'Microfono non disponibile.',
+            ? t('Nessun microfono trovato.', 'No microphone found.')
+            : t('Microfono non disponibile.', 'Microphone not available.'),
       )
       return
     }

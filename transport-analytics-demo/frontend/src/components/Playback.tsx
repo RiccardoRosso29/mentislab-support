@@ -1,4 +1,5 @@
 import { FASCE, fmtDate, fmtN } from '../labels'
+import { t } from '../settings'
 
 export interface Frame {
   day: string | null // null = giornata tipo (media sui giorni filtrati)
@@ -32,7 +33,7 @@ interface Props {
 }
 
 export function frameTitle(fr: Frame) {
-  return fr.day ? fmtDate(fr.day, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Giornata tipo'
+  return fr.day ? fmtDate(fr.day, { weekday: 'long', day: 'numeric', month: 'long' }) : t('Giornata tipo', 'Typical day')
 }
 
 /** Barra di riproduzione in fondo alla mappa. */
@@ -48,15 +49,15 @@ export default function Playback({ state, frames, fasceOre, volume, onChange }: 
           <span className="pb-slot">
             {FASCE[fr.fascia]} <small>{fasceOre[fr.fascia]}</small>
           </span>
-          {volume != null && <span className="pb-vol">{fmtN(volume)} spostamenti tra zone</span>}
+          {volume != null && <span className="pb-vol">{fmtN(volume)} {t('spostamenti tra zone', 'trips between zones')}</span>}
         </div>
       )}
       <div className="pb-bar">
         <button
           className="pb-play"
           onClick={() => onChange({ playing: !state.playing })}
-          aria-label={state.playing ? 'Pausa' : 'Riproduci'}
-          title={state.playing ? 'Pausa (spazio)' : 'Riproduci (spazio)'}
+          aria-label={state.playing ? t('Pausa', 'Pause') : t('Riproduci', 'Play')}
+          title={state.playing ? t('Pausa (spazio)', 'Pause (space)') : t('Riproduci (spazio)', 'Play (space)')}
         >
           {state.playing ? (
             <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
@@ -70,7 +71,7 @@ export default function Playback({ state, frames, fasceOre, volume, onChange }: 
           )}
         </button>
 
-        <div className="pb-mode" role="radiogroup" aria-label="Modalità">
+        <div className="pb-mode" role="radiogroup" aria-label={t('Modalità', 'Mode')}>
           {(['tipo', 'periodo'] as const).map((m) => (
             <button
               key={m}
@@ -79,7 +80,7 @@ export default function Playback({ state, frames, fasceOre, volume, onChange }: 
               className={state.mode === m ? 'on' : ''}
               onClick={() => onChange({ mode: m, frame: 0 })}
             >
-              {m === 'tipo' ? 'Giornata tipo' : 'Periodo'}
+              {m === 'tipo' ? t('Giornata tipo', 'Typical day') : t('Periodo', 'Period')}
             </button>
           ))}
         </div>
@@ -108,11 +109,11 @@ export default function Playback({ state, frames, fasceOre, volume, onChange }: 
         <button
           className="pb-speed"
           onClick={() => onChange({ speed: SPEEDS[(SPEEDS.indexOf(state.speed) + 1) % SPEEDS.length] })}
-          title="Velocità"
+          title={t('Velocità', 'Speed')}
         >
           {state.speed}×
         </button>
-        <button className="pb-close" onClick={() => onChange({ open: false, playing: false })} aria-label="Chiudi playback" title="Chiudi">
+        <button className="pb-close" onClick={() => onChange({ open: false, playing: false })} aria-label={t('Chiudi playback', 'Close playback')} title={t('Chiudi', 'Close')}>
           ✕
         </button>
       </div>
