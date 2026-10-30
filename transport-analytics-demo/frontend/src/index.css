@@ -489,7 +489,6 @@ body.resizing { cursor: col-resize; user-select: none; }
 .ag-rz.wh { top: 0; left: 0; width: 14px; height: 14px; cursor: nwse-resize; }
 .ag-rz.w:hover, .ag-rz.h:hover { background: rgba(242, 140, 40, 0.35); }
 body.resizing-any { user-select: none; }
-body.resizing-any .ag { animation: none; }
 /* cronologia: colonna laterale se la finestra è larga, pannello sovrapposto se è stretta */
 .ag-hist { display: flex; flex-direction: column; gap: 6px; padding: 12px 10px; background: #f1efec; border-right: 1px solid #e6e2dd; overflow-y: auto; }
 .ag-hist.side { width: 220px; flex-shrink: 0; }
