@@ -443,7 +443,7 @@ function Sidebar({ stats, loading, selection, nameOf, fasceOre, onSelectLink, fi
             values={mot}
             total={motTot}
           />
-          <ol className="rank">
+          <ol className="rank rank-sep">
             {motRank.slice(0, 5).map((r) => {
               const scala = motRank[0].n / motTot // la barra più lunga corrisponde alla quota più alta
               const b = motBench(r.mo, r.md)
