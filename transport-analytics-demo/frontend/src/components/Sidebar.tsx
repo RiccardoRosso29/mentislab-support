@@ -136,7 +136,8 @@ function Card({ title, subtitle, children, filtro, azione }: CardProps) {
           <div className="card-title-right">
             {filtro?.attivo && (
               <button className="card-filter" onClick={filtro.onClear} title="Rimuovi il filtro">
-                {filtro.attivo} <span aria-hidden>✕</span>
+                <span className="card-filter-txt">{filtro.attivo}</span>
+                <span className="card-filter-x" aria-hidden>✕</span>
               </button>
             )}
             {azione}
