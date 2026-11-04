@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Train Analytics</title>
+<style>
+@font-face { font-family: 'Mozilla Text'; src: url(../lib/mozilla-text.woff2) format('woff2'); font-weight: 200 800; }
+@font-face { font-family: 'Fragment Mono'; src: url(../lib/fragment-mono.woff2) format('woff2'); }
+:root {
+  --ink: #0A0A0A; --ink2: #3A3A3A; --muted: #969696; --line: #E6E6E6; --bg: #F7F7F7; --card: #FFFFFF;
+  --tren: #4682F5; --tren-l: #C7D9FC; --italo: #D24682; --italo-l: #FFD2E3; --teal: #007887; --mint: #82C8AC;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); }
+body { font-family: 'Mozilla Text', 'Inter', sans-serif; color: var(--ink); width: 1200px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.page { width: 1200px; padding: 0 0 36px; background: var(--bg); position: relative; }
+.mono { font-family: 'Fragment Mono', monospace; }
+header.top { background: var(--ink); color: #fff; padding: 26px 40px 22px; display: flex; align-items: center; justify-content: space-between; }
+header.top .brand { display: flex; align-items: center; gap: 22px; }
+header.top .brand svg { height: 26px; width: auto; color: #fff; }
+header.top .brand .sep { width: 1px; height: 30px; background: rgba(255,255,255,.3); }
+header.top h1 { font-size: 26px; font-weight: 500; letter-spacing: -.3px; }
+header.top .pg { font-family: 'Fragment Mono', monospace; font-size: 12px; color: rgba(255,255,255,.6); letter-spacing: 1px; text-transform: uppercase; }
+.filters { display: flex; flex-wrap: nowrap; align-items: center; gap: 7px; padding: 14px 40px; background: #fff; border-bottom: 1px solid var(--line); }
+.chip { font-family: 'Fragment Mono', monospace; font-size: 11px; border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; color: var(--ink2); background: var(--bg); }
+.chip b { font-weight: 400; color: var(--ink); }
+.chip.on::before { content: '✓ '; color: var(--teal); }
+.legendbar { display: flex; gap: 14px; white-space: nowrap; align-items: center; margin-left: auto; font-size: 13px; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.wrap { padding: 0 40px; }
+.section-title { margin: 34px 0 14px; display: flex; align-items: baseline; gap: 14px; }
+.section-title .num { font-family: 'Fragment Mono', monospace; font-size: 12px; color: var(--teal); letter-spacing: 1px; }
+.section-title h2 { font-size: 24px; font-weight: 500; letter-spacing: -.3px; }
+.section-title .sub { font-size: 13px; color: var(--muted); margin-left: auto; font-family: 'Fragment Mono', monospace; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; }
+.card h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.card .cap { font-family: 'Fragment Mono', monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 10px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.grid2 > *, .grid4 > * { min-width: 0; }
+table.t.sm { font-size: 12px; } table.t.sm td, table.t.sm th { padding-left: 5px; padding-right: 5px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.kpi { display: flex; align-items: center; gap: 22px; }
+.kpi .val { font-size: 40px; font-weight: 500; letter-spacing: -1px; }
+.kpi .lbl { font-family: 'Fragment Mono', monospace; font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: .8px; margin-bottom: 6px; }
+.kpi .split { margin-top: 10px; font-size: 14px; display: flex; gap: 18px; }
+.kpi .split span b { font-weight: 600; }
+table.t { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+table.t th { font-family: 'Fragment Mono', monospace; font-weight: 400; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--ink); white-space: nowrap; }
+table.t th.l, table.t td.l { text-align: left; }
+table.t td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.t tr.tot td { font-weight: 600; border-top: 1px solid var(--ink); border-bottom: none; }
+table.t th.grp { text-align: center; color: var(--ink); border-bottom: 1px solid var(--line); }
+table.heat td.c { text-align: center; border: 2px solid #fff; border-radius: 4px; }
+.bar { display: inline-block; height: 9px; border-radius: 2px; vertical-align: middle; margin-left: 6px; }
+.op { display: inline-flex; align-items: center; gap: 6px; }
+.op i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
+.medians { display: flex; flex-direction: column; gap: 10px; }
+.med .k { font-family: 'Fragment Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.med .v { font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.note { font-size: 11px; color: var(--muted); margin-top: 8px; font-family: 'Fragment Mono', monospace; }
+.opcard-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.optag { font-family: 'Fragment Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; padding: 3px 10px; border-radius: 999px; color: #fff; }
+footer.foot { position: absolute; left: 40px; right: 40px; bottom: 12px; display: flex; justify-content: space-between; font-family: 'Fragment Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: .5px; }
+svg text { font-family: 'Mozilla Text', sans-serif; }
+svg .ax text { font-size: 11px; fill: #6b6b6b; font-family: 'Fragment Mono', monospace; }
+svg .ax line, svg .ax path { stroke: var(--line); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../lib/d3.min.js"></script>
+<script src="../lib/topojson-client.min.js"></script>
+<script src="../lib/maps.js"></script>
+<script src="series.js"></script>
+<script src="data.js"></script>
+<script src="logo.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
