@@ -1,0 +1,5 @@
+aw_deep_link,product_name,aw_product_id,merchant_product_id,merchant_image_url,description,merchant_category,search_price,merchant_name,merchant_id,colour,dimensions,merchant_deep_link,last_updated
+https://www.awin1.com/pclick.php?p=1&a=0&m=0,"[DATI DI PROVA] Armario 2 puertas correderas blanco",1,TEST001,,"Armario ropero. Medidas: 200 cm(alto)100 cm(ancho)50 cm(fondo)",Armarios,"191,00",Tienda de prueba ES,0,blanco,,https://example.com/test-001,2026-11-01
+https://www.awin1.com/pclick.php?p=2&a=0&m=0,"[DATI DI PROVA] Tendedero torre 3 alturas 47x41x136 cm",2,TEST002,,"Tendedero plegable vertical",Tendederos,"39,90",Tienda de prueba ES,0,gris,,https://example.com/test-002,2026-11-01
+https://www.awin1.com/pclick.php?p=3&a=0&m=0,"[DATI DI PROVA] Sofá cama clic clac",3,TEST003,,"Sofá cama de 3 plazas, profundidad abierto 115 cm",Sofás,"249",Tienda de prueba ES,0,azul,"190 x 88 x 87 cm",https://example.com/test-003,2026-11-01
+https://www.awin1.com/pclick.php?p=4&a=0&m=0,"[DATI DI PROVA] Lámpara de techo",4,TEST004,,"Lámpara LED",Iluminación,"29",Tienda de prueba ES,0,negro,,https://example.com/test-004,2026-11-01

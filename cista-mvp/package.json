@@ -10,13 +10,13 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "node scripts/e2e.mjs",
+    "e2e": "node scripts/e2e.cjs",
     "seed": "tsx scripts/build-seed.ts",
     "import:awin": "tsx scripts/import-awin.ts",
     "import:csv": "tsx scripts/import-csv.ts",
     "import:amazon": "tsx scripts/import-amazon.ts",
     "dims:llm": "tsx scripts/llm-dims.ts",
-    "build:artifact": "npm run build && node scripts/build-artifact.mjs"
+    "build:artifact": "ARTIFACT=1 vite build && node scripts/build-artifact.mjs"
   },
   "dependencies": {
     "@react-three/fiber": "8.17.14",
@@ -26,6 +26,7 @@
     "zustand": "4.5.7"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
     "@types/node": "^22.10.2",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",

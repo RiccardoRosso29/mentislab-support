@@ -5,3 +5,4 @@ dist-artifact
 .env.local
 data/imported/*.json
 data/cache
+dist-artifact-src

@@ -92,7 +92,7 @@ export type Item = {
   productId?: string;
   chosen?: boolean;
   /** misure del modello originale, per tornare indietro dopo «prova nel 3D» */
-  model?: { w: number; d: number; h: number; color?: string; params?: Record<string, number> };
+  model?: { w: number; d: number; h: number; x: number; y: number; color?: string; params?: Record<string, number> };
   /** mobili fissi (sanitari, elettrodomestici incassati): non si spostano trascinando */
   fixed?: boolean;
   /** passaggio minimo e comodo davanti, se diverso da quello del tipo */
@@ -181,6 +181,8 @@ export type Product = {
   ratingCount?: number;
   image?: string;
   note?: string;
+  /** link già tracciato fornito dal feed di affiliazione (es. aw_deep_link di Awin) */
+  affiliateUrl?: string;
 };
 
 export type FitStatus = 'ok' | 'warn' | 'no';

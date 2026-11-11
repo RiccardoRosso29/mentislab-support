@@ -107,6 +107,12 @@ for (const [slot, list] of Object.entries(src)) {
   }
 }
 
+// prodotti importati dai feed (npm run import:awin / import:csv / import:amazon)
+const impDir = path.resolve('data/imported');
+for (const f of fs.existsSync(impDir) ? fs.readdirSync(impDir).filter((x) => x.endsWith('.json')) : []) {
+  for (const p of JSON.parse(fs.readFileSync(path.join(impDir, f), 'utf8')) as Product[]) if (!out.has(p.id)) out.set(p.id, p);
+}
+
 const products = [...out.values()];
 fs.writeFileSync(path.resolve('data/seed-products.json'), JSON.stringify(products, null, 1) + '\n');
 const by = products.reduce<Record<string, number>>((a, p) => ((a[p.category] = (a[p.category] ?? 0) + 1), a), {});
