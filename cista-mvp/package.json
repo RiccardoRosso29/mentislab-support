@@ -1,0 +1,39 @@
+{
+  "name": "cista-mvp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "CiSta: arreda casa solo con mobili che ci stanno davvero (MVP)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "node scripts/e2e.mjs",
+    "seed": "tsx scripts/build-seed.ts",
+    "import:awin": "tsx scripts/import-awin.ts",
+    "import:csv": "tsx scripts/import-csv.ts",
+    "import:amazon": "tsx scripts/import-amazon.ts",
+    "dims:llm": "tsx scripts/llm-dims.ts",
+    "build:artifact": "npm run build && node scripts/build-artifact.mjs"
+  },
+  "dependencies": {
+    "@react-three/fiber": "8.17.14",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "three": "0.169.0",
+    "zustand": "4.5.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@types/three": "0.169.0",
+    "@vitejs/plugin-react": "4.3.4",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3",
+    "vite": "5.4.21",
+    "vitest": "2.1.9"
+  }
+}
